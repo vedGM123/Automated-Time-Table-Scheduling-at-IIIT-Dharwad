@@ -2,7 +2,7 @@
 
 ## 📌 Project Overview
 This project automates the generation of class and examination timetables at IIIT Dharwad.  
-It replaces the traditional manual scheduling process with an intelligent, algorithm-driven system that considers constraints like faculty availability, classroom capacity, student enrollment, and course requirements.  
+It replaces the traditional manual scheduling process with an efficient, algorithm-driven system that considers constraints like faculty availability, classroom capacity, student enrollment, and course requirements.  
 
 The goal is to generate **optimized, clash-free timetables** for lectures, labs, electives, and exams, saving time and minimizing errors.
 
