@@ -1,0 +1,12 @@
+,Course-Name,Course-Duration,Semester-Number,Branch,Lectures-Per-Week (LTP),Duration_minutes per week,Number-of-Students,Room-Number,Slots-Preferred,Credits
+MA261,Differential Equations,Half sem,3,CSE,2+1+0,240,170,C004,evening,2
+MA262,Multivariate Calculus,Half sem,3,CSE,2+1+0,240,170,C004,evening,2
+MA261,Operationg System,Half sem,3,CSE,3+0+0,240,170,C004,evening,2
+CS262,Software Design Tools And Techniques,Full sem,3,CSE,2+0+2,300,170,C203,NA,3
+CS263,Design & Analysis of Algorithm,Full sem,3,CSE,3+0+2,300,170,C203,NA,4
+CS264,Computer Networks,Full sem,3,CSE,3+1+0,240,170,C304,NA,4
+HS261,HSS(Ethics & Values),Half sem,3,CSE,2+1,120,170,C004,NA,2
+EC251,Electronics System Design - I,Half sem,2,CSE,NA,240,40,NA,NA,2
+EC252,Introductioon to RFIC Design ,Half sem,2,CSE,NA,240,30,NA,NA,2
+CS152,Data Science with Python,Half sem,2,CSE,2+1+0,240,60,C205,NA,2
+CS251,2D Computer Graphics,Half sem,2,CSE,NA,240,40,NA,NA,2
