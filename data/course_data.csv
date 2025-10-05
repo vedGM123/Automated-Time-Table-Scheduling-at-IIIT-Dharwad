@@ -1,12 +1,12 @@
-,Course-Name,Course-Duration,Semester-Number,Branch,Lectures-Per-Week (LTP),Duration_minutes per week,Number-of-Students,Room-Number,Slots-Preferred,Credits
-MA261,Differential Equations,Half sem,3,CSE,2+1+0,240,170,C004,evening,2
-MA262,Multivariate Calculus,Half sem,3,CSE,2+1+0,240,170,C004,evening,2
-MA261,Operationg System,Half sem,3,CSE,3+0+0,240,170,C004,evening,2
-CS262,Software Design Tools And Techniques,Full sem,3,CSE,2+0+2,300,170,C203,NA,3
-CS263,Design & Analysis of Algorithm,Full sem,3,CSE,3+0+2,300,170,C203,NA,4
-CS264,Computer Networks,Full sem,3,CSE,3+1+0,240,170,C304,NA,4
-HS261,HSS(Ethics & Values),Half sem,3,CSE,2+1,120,170,C004,NA,2
-EC251,Electronics System Design - I,Half sem,2,CSE,NA,240,40,NA,NA,2
-EC252,Introductioon to RFIC Design ,Half sem,2,CSE,NA,240,30,NA,NA,2
-CS152,Data Science with Python,Half sem,2,CSE,2+1+0,240,60,C205,NA,2
-CS251,2D Computer Graphics,Half sem,2,CSE,NA,240,40,NA,NA,2
+Course Code,Course-Name,Semester,Instructor,Branch,L-T-P-S-C,Number-of-Students,Credits
+MA261,Differential Equations,3,Dr. Anand Barangi,CSE,3-1-0-0-2,170,2
+MA262,Multivariate Calculus,3,Dr. Somen Bhattacharjee,CSE,3-1-0-0-2,170,2
+MA261,Operating System,3,Dr. Suvadip Hazra,CSE,3-0-0-4-2,170,2
+CS262,"Software Design Tools And Techniques",3,Dr. Vivekraj V K,CSE,3-0-2-0-3,170,3
+CS263,"Design & Analysis of Algorithm",3,Dr. Pramod Yelmewad,CSE,3-0-2-0-4,170,4
+CS264,Computer Networks,3,Dr. Prabhu Prasad B M,CSE,3-1-0-0-4,170,4
+HS261,HSS(Ethics & Values),3,Dr. Aswath Babu,CSE,3-0-0-3,170,2
+EC251,Electronics System Design - I,3,Dr. Pankaj,CSE,3-1-0-0-2,40,2
+EC252,Introduction to RFIC Design,3,Dr. Sibshankar Padhy,CSE,3-1-0-0-2,30,2
+CS152,Data Science with Python,3,Dr. Abdul Wahid,CSE,3-1-0-0-2,60,2
+CS251,2D Computer Graphics,3,Dr. Vivekraj V K,CSE,3-1-0-0-2,40,2
