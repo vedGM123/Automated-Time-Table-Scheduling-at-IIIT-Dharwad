@@ -1,24 +1,24 @@
-Course Code,Course-Name,Instructor,Room,Day,Start-Time,End-Time
-CS264,Computer Networks (Lecture),Dr. Prabhu Prasad B M,R2,Fri,10:40,12:10
-MA261,Differential Equations (Tutorial),Dr. Anand Barangi,R3,Fri,11:20,12:20
-CS263,Design & Analysis of Algorithm (Lecture),Dr. Pramod Yelmewad,R1,Fri,14:40,16:10
-HS261,HSS(Ethics & Values) (Lecture),Dr. Aswath Babu,R4,Fri,14:40,16:10
-MA262,Multivariate Calculus (Lecture),Dr. Somen Bhattacharjee,R2,Mon,09:00,10:30
-CS264,Computer Networks (Tutorial),Dr. Prabhu Prasad B M,R1,Mon,10:10,11:10
-MA261,Differential Equations (Lecture),Dr. Anand Barangi,R3,Mon,10:40,12:10
-CS261,Operating System (Lecture),Dr. Suvadip Hazra,R3,Mon,14:40,16:10
-CS262,Software Design Tools And Techniques (Lecture),Dr. Vivekraj V K,R1,Mon,16:20,17:50
-MA262,Multivariate Calculus (Lecture),Dr. Somen Bhattacharjee,R5,Thu,09:00,10:30
-CS262,Software Design Tools And Techniques (Lab),Dr. Vivekraj V K,R5,Thu,16:10,18:10
-HS261,HSS(Ethics & Values) (Lecture),Dr. Aswath Babu,R5,Tue,09:00,10:30
-CS263,Design & Analysis of Algorithm (Lecture),Dr. Pramod Yelmewad,R2,Tue,10:40,12:10
-MA262,Multivariate Calculus (Tutorial),Dr. Somen Bhattacharjee,R5,Tue,14:10,15:10
-MA261,Differential Equations (Lecture),Dr. Anand Barangi,R1,Tue,16:20,17:50
-CS262,Software Design Tools And Techniques (Lecture),Dr. Vivekraj V K,R4,Wed,09:00,10:30
-CS263,Design & Analysis of Algorithm (Lab),Dr. Pramod Yelmewad,R2,Wed,09:00,11:00
-CS261,Operating System (Lecture),Dr. Suvadip Hazra,R4,Wed,10:40,12:10
-CS264,Computer Networks (Lecture),Dr. Prabhu Prasad B M,R1,Wed,10:40,12:10
-EC251,Open Elective - Electronics System Design - I,Dr. Pankaj,R2,Wed,14:30,15:30
-EC252,Open Elective - Introduction to RFIC Design,Dr. Sibshankar Padhy,R1,Wed,14:30,15:30
-CS152,Open Elective - Data Science with Python,Dr. Abdul Wahid,R1,Wed,14:30,15:30
-CS251,Open Elective - 2D Computer Graphics,Dr. Vivekraj V K,R5,Wed,14:30,15:30
+Course Code,Course-Name,Instructor,Room,Day,Start-Time,End-Time,Semester,Branch,Type
+CS264,Computer Networks (Lecture),Dr. Prabhu Prasad B M,R1,Fri,09:00,10:30,3,CSE,Lecture
+HS261,HSS(Ethics & Values) (Lecture),Dr. Aswath Babu,R1,Fri,10:40,12:10,3,CSE,Lecture
+MA261,Differential Equations (Lecture),Dr. Anand Barangi,R1,Mon,09:00,10:30,3,CSE,Lecture
+MA262,Multivariate Calculus (Lecture),Dr. Somen Bhattacharjee,R1,Mon,10:40,12:10,3,CSE,Lecture
+CS261,Operating System (Lecture),Dr. Suvadip Hazra,R1,Mon,14:00,15:30,3,CSE,Lecture
+CS262,Software Design Tools And Techniques (Lecture),Dr. Vivekraj V K,R1,Mon,15:40,17:10,3,CSE,Lecture
+CS263,Design & Analysis of Algorithm (Lecture),Dr. Pramod Yelmewad,R1,Mon,17:20,18:50,3,CSE,Lecture
+CS264,Computer Networks (Lecture),Dr. Prabhu Prasad B M,R1,Thu,09:00,10:30,3,CSE,Lecture
+HS261,HSS(Ethics & Values) (Lecture),Dr. Aswath Babu,R1,Thu,10:40,12:10,3,CSE,Lecture
+MA261,Differential Equations (Lecture),Dr. Anand Barangi,R1,Tue,09:00,10:30,3,CSE,Lecture
+MA262,Multivariate Calculus (Lecture),Dr. Somen Bhattacharjee,R1,Tue,10:40,12:10,3,CSE,Lecture
+CS261,Operating System (Lecture),Dr. Suvadip Hazra,R1,Tue,14:00,15:30,3,CSE,Lecture
+CS262,Software Design Tools And Techniques (Lecture),Dr. Vivekraj V K,R1,Tue,15:40,17:10,3,CSE,Lecture
+CS263,Design & Analysis of Algorithm (Lecture),Dr. Pramod Yelmewad,R1,Tue,17:20,18:50,3,CSE,Lecture
+MA261,Differential Equations (Tutorial),Dr. Anand Barangi,R1,Wed,09:00,10:00,3,CSE,Tutorial
+MA262,Multivariate Calculus (Tutorial),Dr. Somen Bhattacharjee,R1,Wed,10:10,11:10,3,CSE,Tutorial
+CS264,Computer Networks (Tutorial),Dr. Prabhu Prasad B M,R1,Wed,11:20,12:20,3,CSE,Tutorial
+CS262,Software Design Tools And Techniques (Lab),Dr. Vivekraj V K,R1,Wed,14:00,16:00,3,CSE,Lab
+EC251,Open Elective - Electronics System Design - I,Dr. Pankaj,R3,Wed,14:30,15:30,3,CSE,Elective
+EC252,Open Elective - Introduction to RFIC Design,Dr. Sibshankar Padhy,R1,Wed,14:30,15:30,3,CSE,Elective
+CS152,Open Elective - Data Science with Python,Dr. Abdul Wahid,R3,Wed,14:30,15:30,3,CSE,Elective
+CS251,Open Elective - 2D Computer Graphics,Dr. Vivekraj V K,R2,Wed,14:30,15:30,3,CSE,Elective
+CS263,Design & Analysis of Algorithm (Lab),Dr. Pramod Yelmewad,R1,Wed,16:10,18:10,3,CSE,Lab
