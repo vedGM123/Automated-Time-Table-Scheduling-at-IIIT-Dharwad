@@ -236,4 +236,4 @@ for j in range(1, ws.max_column + 1):
     ws.cell(row=1, column=j).font = Font(bold=True, size=12)
 
 wb.save(OUTPUT_EXCEL)
-print(f"✅ Structured Excel saved to: {OUTPUT_EXCEL} (Lunch break shown)")
+print(f"✅ Structured Excel saved to: {OUTPUT_EXCEL} ")
