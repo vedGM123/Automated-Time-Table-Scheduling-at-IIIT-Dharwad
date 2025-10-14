@@ -1,0 +1,27 @@
+Course Code,Course-Name,Instructor,Room,Day,Start-Time,End-Time,Branch,Semester
+MA261,Differential Equations (Lecture),Dr. Anand Barangi,R4,Mon,10:30,12:00,CSE,3
+MA261,Differential Equations (Lecture),Dr. Anand Barangi,R3,Wed,09:00,10:30,CSE,3
+MA261,Differential Equations (Tutorial),Dr. Anand Barangi,R3,Thu,14:00,15:00,CSE,3
+MA262,Multivariate Calculus (Lecture),Dr. Somen Bhattacharjee,R1,Fri,10:30,12:00,CSE,3
+MA262,Multivariate Calculus (Lecture),Dr. Somen Bhattacharjee,R3,Fri,14:30,16:00,CSE,3
+MA262,Multivariate Calculus (Tutorial),Dr. Somen Bhattacharjee,R1,Thu,10:00,11:00,CSE,3
+CS261,Operating System (Lecture),Dr. Suvadip Hazra,R1,Thu,16:00,17:30,CSE,3
+CS261,Operating System (Lecture),Dr. Suvadip Hazra,R3,Tue,13:00,14:30,CSE,3
+CS262,Software Design Tools And Techniques (Lecture),Dr. Vivekraj V K,R3,Tue,14:30,16:00,CSE,3
+CS262,Software Design Tools And Techniques (Lecture),Dr. Vivekraj V K,R3,Mon,16:00,17:30,CSE,3
+CS262,Software Design Tools And Techniques (Lab),Dr. Vivekraj V K,Lab2,Wed,15:00,17:00,CSE,3
+CS263,Design & Analysis of Algorithm (Lecture),Dr. Pramod Yelmewad,R4,Fri,16:00,17:30,CSE,3
+CS263,Design & Analysis of Algorithm (Lecture),Dr. Pramod Yelmewad,R4,Mon,14:30,16:00,CSE,3
+CS263,Design & Analysis of Algorithm (Lab),Dr. Pramod Yelmewad,Lab2,Thu,11:00,13:00,CSE,3
+CS264,Computer Networks (Lecture),Dr. Prabhu Prasad B M,R4,Fri,13:00,14:30,CSE,3
+CS264,Computer Networks (Lecture),Dr. Prabhu Prasad B M,R4,Mon,13:00,14:30,CSE,3
+CS264,Computer Networks (Tutorial),Dr. Prabhu Prasad B M,R3,Fri,09:00,10:00,CSE,3
+HS261,HSS(Ethics & Values) (Lecture),Dr. Aswath Babu,R3,Wed,13:00,14:30,CSE,3
+HS261,HSS(Ethics & Values) (Lecture),Dr. Aswath Babu,R4,Mon,09:00,10:30,CSE,3
+EC251,Electronics System Design - I (Lecture),Dr. Pankaj,R2,Tue,16:00,17:30,CSE,3
+EC251,Electronics System Design - I (Lecture),Dr. Pankaj,R4,Tue,10:30,12:00,CSE,3
+EC251,Electronics System Design - I (Tutorial),Dr. Pankaj,R3,Wed,11:00,12:00,CSE,3
+EC252,Introduction to RFIC Design (Lecture),Dr. Sibshankar Padhy,R4,Tue,09:00,10:30,CSE,3
+EC252,Introduction to RFIC Design (Tutorial),Dr. Sibshankar Padhy,R3,Thu,09:00,10:00,CSE,3
+CS152,Data Science with Python (Tutorial),Dr. Abdul Wahid,R2,Thu,13:00,14:00,CSE,3
+CS251,2D Computer Graphics (Tutorial),Dr. Vivekraj V K,R1,Thu,15:00,16:00,CSE,3
