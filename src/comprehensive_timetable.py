@@ -107,7 +107,7 @@ def generate_time_slots():
 def load_rooms():
     rooms = {}
     try:
-        with open('rooms.csv', 'r') as f:
+        with open('../data/rooms.csv', 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 rooms[row['id']] = {
@@ -127,7 +127,8 @@ def load_batch_data():
     
     # Load batch sizes directly from combined.csv
     try:
-        df = pd.read_csv('combined.csv')
+        csv_path = "C:/Users/LENOVO/Automated-Time-Table-Scheduling-At-IIIT-Dharwad/data/combined.csv"
+        df = pd.read_csv(csv_path)
         
         # Group by Department and Semester to get total students
         grouped = df.groupby(['Department', 'Semester'])
@@ -138,8 +139,8 @@ def load_batch_data():
                 # Get the max number of students for this department/semester
                 total_students = int(group['total_students'].max())
                 
-                # Default max batch size of 70
-                max_batch_size = 70
+                # Default max batch size of 85
+                max_batch_size = 85
                 
                 # Calculate number of sections needed
                 num_sections = (total_students + max_batch_size - 1) // max_batch_size
