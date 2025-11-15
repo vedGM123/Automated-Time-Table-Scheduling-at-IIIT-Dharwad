@@ -1,0 +1,7 @@
+{
+  "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+  "LECTURE_MIN": 90,
+  "LAB_MIN": 120,
+  "TUTORIAL_MIN": 60,
+  "SELF_STUDY_MIN": 60
+}
