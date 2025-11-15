@@ -27,7 +27,7 @@ CSE,3,B1-NEW,Electronics System Engineering,3,1,0,0,2,Dr. Mallikarjun ,Yes,80
 CSE,3,B1-CS152,Data Science with Python,3,1,0,0,2,Dr. Abdul Wahid,Yes,50
 CSE,3,B1-CS251,2D Computer Graphics,3,1,0,0,2,Dr. Vivekraj,Yes,30
 CSE,3,B2-NEW,Introduction to Embedded Signals Inteligence,3,1,0,0,2,Dr. Sibasankar Padhy,Yes,80
-CSE,3,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,50
+CSE,3,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,170
 CSE,5,CS309,Statistics for Computer Science,3,1,0,0,4,Dr. Sunil CK / Dr. Pavan,Yes,70
 CSE,5,CS303,Computer Networks,3,1,2,0,5,Dr. Animesh Roy/ Dr. Dibyajoti Guha,Yes,70
 CSE,5,CS304,Artificial Intelligence,3,1,0,0,4,Dr. Krishnendu/ Dr. Girirsh,Yes,70
@@ -74,56 +74,110 @@ DSAI,1,B1-NEW,Basics of design,3,1,0,0,2,Dr. Sandesh P,Yes,70
 DSAI,1,B1-HS156,Holistic Personality Development,3,0,0,0,2,Dr. Rajesh NS,Yes,70
 DSAI,1,B2-CS151,Introduction to CyberSecurity,3,1,0,0,2,Dr. Girish Revadigar,No,120
 DSAI,1,B1-NEW,Deep Speech Processing,3,1,0,0,4,Prof. SRM Prasanna,Yes,19
-DSAI,7,B2-CS455,Blockchain Technology,3,0,0,4,4,Dr. Rajendra H,Yes,24
-DSAI,7,B2-EC361,Introduction to 5G Network,3,1,0,0,4,Dr. Jagadeesha R Bhat,Yes,22
-DSAI,7,B2-NEW,Model Checking,3,0,0,4,4,Dr. Pavan,Yes,15
-DSAI,7,B2-NEW,Quantum Communication,3,0,0,0,3,Dr. Aswath B,Yes,18
-DSAI,7,B2-NEW,Quantum HPC and AI,1,0,0,0,1,Dr. Manish M (Dr. Aswath),Yes,21
-DSAI,7,B2-NEW,Design Thinking and Innovation,3,1,0,0,4,Dr. Sandesh P,Yes,29
-ECE,3,-,Linear Algebra,3,1,0,0,2,Dr. Somen Bhattacharjee,Yes,70
-ECE,2,-,Optimization,3,1,0,0,2,Dr. Dibyajyothi Guha,Yes,70
-ECE,2,-,Computer Architecture,3,0,2,0,2,Dr.Jagadish D N,Yes,70
-ECE,2,-,English Language and Communication,3,0,0,0,3,Dr. Rajesh N S,Yes,70
-ECE,2,-,Data Structures and Algorithms,3,0,2,0,4,Dr. Prabhu Prasad,Yes,70
-ECE,2,-,Network Analysis,2,1,0,0,3,Dr. Sibasankar Padhy,Yes,70
-ECE,2,B3-NEW,Data Science with Python,0,0,2,0,0,Dr. Abdul Wahid,Yes,26
-ECE,2,B3-NEW,Introduction to Digital VLSI Design,0,0,2,0,0,Dr Prakash Pawar,Yes,29
-ECE,2,B3-NEW,Industry Insights Program Part 1,0,0,1,0,0,Mr.Ram Subramanian & Mr. Sasi Kumar Sundara Rajan,Yes,33
-ECE,2,B3-NEW,Principles of Quantum Physics,0,0,2,0,0,Dr. Aswath Babu & Pof. Ravi Shankar,Yes,17
-ECE,2,B4-NEW,Linux for Engineers,0,0,2,0,0,Dr. Shirshendu L,Yes,23
-ECE,2,B4-NEW,Photography101,0,0,1,0,0,Dr Prabhu Prasad BM,Yes,35
-ECE,2,B4-NEW,Introduction to Holistic Personality Development,0,0,1,0,0,Prof.Chachadi and Dr.Chandrika,Yes,26
-ECE,2,B4-NEW,Visual Design – Principles and Application in Product Communication        ,0,0,2,0,0,Dr. Sandesh P,Yes,20
-ECE,2,B1-NEW,Introduction to Internet of Things,0,0,2,0,0,Dr Jagadeesha Bhat,Yes,24
-ECE,2,B1-ASD151,Introduction to Design,0,0,1,0,0,Dr. Sandesh P,Yes,28
-ECE,2,B1-HS151,Introduction to Personal Finance,0,0,2,0,0,Dr. Siddharth,Yes,31
-ECE,2,B1-NEW,Concurrency and Computation,0,0,2,0,0,Dr Pramod Y,Yes,22
-ECE,2,B2-NEW,Computer Intensive Statistical Methods,0,0,2,0,0,Dr Ramesh Athe,Yes,19
-ECE,4,MA208,Probability and Random Processes,3,1,0,0,4,Dr. Rajib Sharma/ Rajesh Kumar ,Yes,70
-ECE,4,EC205,Control Systems,3,0,2,0,4,Dr. Pankaj Kumar,Yes,70
-ECE,4,EC310,Embedded Systems Design,3,1,0,0,4,Dr. Prakash Pawar,Yes,70
-ECE,4,EC204,Analog and Digital Communication,3,1,2,0,5,Dr. Somen Bhattacharjee / Dr. Jagadish D N (Lab),Yes,70
-ECE,4,HS204,Economics,3,1,0,0,4,Dr. Anushree Kini,Yes,70
-ECE,4,HS205,Ethics,3,0,0,0,3,Dr. Jolly Thomas IIT Dharwad,Yes,70
-ECE,6,CS307,Wireless Communication,3,0,0,4,4,Dr. Rajib Sharma/ Dr. Rao (Lab),Yes,70
-ECE,6,B1-CS464,Deep Learning for Computer Vision ,3,1,0,0,4,Dr. Chinmayanand,Yes,30
-ECE,6,B1-NEW,Large Languange Models,3,0,0,4,4,Dr. Sunil S,Yes,25
-ECE,6,B1-CS458,Natural Language Processing,3,1,0,0,4,Dr. Krishnendu,Yes,27
-ECE,6,B1,CMOS RF Circuit Design,,,,,,Dr. Rajesh Kumar,Yes,18
-ECE,6,B1-NEW,Deep Speech Processing,3,1,0,0,4,Prof. SRM Prasanna,Yes,21
-ECE,6,B2-CS455,Blockchain Technology,3,0,0,4,4,Dr. Rajendra H,Yes,26
-ECE,6,B2-EC361,Introduction to 5G Network,3,1,0,0,4,Dr. Jagadeesha R Bhat,Yes,32
-ECE,6,B2,Model Checking,3,0,0,4,4,Dr. Pavan,Yes,19
-ECE,6,B2,Quantum Communication,3,0,0,0,3,Dr. Aswath B,Yes,15
-ECE,6,B2,Quantum HPC and AI,1,0,0,0,1,Dr. Manish M (Dr. Aswath),Yes,17
-ECE,6,B2-NEW,Design Thinking and Innovation,3,1,0,0,4,Dr. Sandesh P,Yes,28
-ECE,6,B3,Computer Graphics,3,1,0,0,4,Dr. Vivekraj V K,Yes,24
-ECE,6,B3-CS307,Machine Learning,3,1,0,0,4,Dr. Deepak K T,Yes,33
-ECE,6,B3,Virtualization & Cloud Computing,,,,,,Dr. Malay,Yes,22
-ECE,6,B4,Data Analytics & Visualization,3,1,0,0,4,Dr. Sunil C K ,Yes,26
-ECE,6, B4-DS351,Statistics for Health Technology,3,1,0,0,4,Dr. Ramesh Athe,Yes,19
-ECE,6,B4,Medical Image Analysis,2,0,2,4,4,Dr. Girish G N,Yes,23
-ECE,6,B4-CS472,Bioinformatics,,,,,,Dr. Sunil Kumar PV,Yes,18
-ECE,6,B3,Automotive Embedded and Multimedia Systems/Microwave Engineering/Computer Graphics/Machine learning/Virtualization and Cloud Computing,3,1,0,0,4,Mr. Jagadeesh K (Dr Sibasankar Padhy)/Dr. Somen/Dr. Vivekraj V K/Dr. Deepak KT/Dr Malay,Yes,30
-ECE,6,Mini Project 1,Mini Project 1,0,0,0,8,2,Dr. Pankaj Kumar,Yes,70
-ECE,8,EC499,Major Project,0,0,0,32,8,Dr. Rajesh Kumar,Yes,70
+DSAI,3,MA262,Multivariate Calculus,3,1,0,0,2,Dr. Somen Bhattacharjee,Yes,170
+DSAI,3,MA261,Differential Equation,3,1,0,0,2,Dr. Anand P Barangi,Yes,170
+DSAI,3,DA261,Statistical programing,1,0,2,0,2,Dr.Ramesh Athe,Yes,15
+DSAI,3,DA262,Data Handaling and Visualization,2,0,2,0,3,Dr. Siddharth,Yes,110
+DSAI,3,CS304,Artificial intelligence,3,1,0,0,4,Dr.Animesh chaturvedi,Yes,80
+DSAI,3,CS307,Machine Learning,3,0,2,0,4,Dr.Utkarsh Khaire,Yes,80
+DSAI,3,HSS/IE,Neuro-Linguistic Programming(NLP),1,0,0,1,1,Dr.Manjunath K V,Yes,70
+DSAI,3,HSS/IE,Leadreship I,1,0,0,1,1,Dr.Jagadeesha R Bhat,Yes,70
+DSAI,3,HSS/IE,Sociology for Innovation,1,0,0,1,1,Dr.Anushree Kini,Yes,70
+DSAI,3,HSS/IE,Social Imapct of Technology,1,0,0,1,1,Dr.Rajesh Kumar,Yes,70
+DSAI,3,HSS/IE,Holistic Personality Development,1,0,0,1,1,Dr.Rajesh N S,Yes,70
+DSAI,3,B1-EC251,Electronics System Design-1,3,1,0,0,2,Dr. Pankaj Kumar,Yes,80
+DSAI,3,B1-EC252,Introduction RFID Design,3,1,0,0,2,D. Rajesh Kumar,Yes,80
+DSAI,3,B1-NEW,Electronics System Engineering,3,1,0,0,2,Dr. Mallikarjun ,Yes,80
+DSAI,3,B1-CS152,Data Science with Python,3,1,0,0,2,Dr. Abdul Wahid,Yes,50
+DSAI,3,B1-CS251,2D Computer Graphics,3,1,0,0,2,Dr. Vivekraj,Yes,30
+DSAI,3,B2-NEW,Introduction to Embedded Signals Inteligence,3,1,0,0,2,Dr. Sibasankar Padhy,Yes,80
+DSAI,3,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,170
+DSAI,5,DS302,Computer Communication Networks,3,1,2,0,5,Dr.Shirshendu Layek,Yes,80
+DSAI,5,DS303,Algorithms and Artificial Intelligence,3,1,0,0,4,Dr.Animesh Chaturvedi,Yes,80
+DSAI,5,CS307,Machine Learning,3,0,2,0,4,Dr.Siddharth,Yes,80
+DSAI,5,B1- CS463,Parallel computing,3,1,0,0,4,Dr. Pramod Yelmewad,Yes,70
+DSAI,5,B1- CS308,Compiler Design,3,1,0,0,4,Dr. Pavan Kumar,Yes,70
+DSAI,5,B1-DS301,Graphs and social networks,3,1,0,0,4,Dr. Utkarsh Khaire,Yes,70
+DSAI,5,B1-CS366,Advanced algorithm Design,3,1,0,0,4,Dr. Suvadip H,Yes,200
+DSAI,5,B2-DS359,Full stack Development,3,1,0,0,4,Dr. Manjuth KV,Yes,70
+DSAI,5,B2-EC355,Internet of Things,3,1,0,0,4,Dr. Prakash Pawar,Yes,70
+DSAI,5,B2-EC364,Semiconductor Device Modelling,3,1,0,0,4,Dr. Pankaj Kumar,Yes,70
+DSAI,5,B2-CS352,Cryptography and information security,3,1,0,0,4,Dr. Rajendra H,Yes,70
+DSAI,5,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,200
+DSAI,5,B2-EC365,AI in biomedical signal interpretation,3,1,0,0,4,Dr. Sibasankar Padhy,Yes,70
+DSAI,7,B1-DS456,CyberSecurity Techniques,3,1,0,0,4,Dr. Rajendra H,Yes,110
+DSAI,7,B1-EC456,Reinforcement Learning,3,1,0,0,4,Dr. Dibyajyothi Guha,Yes,70
+DSAI,7,B1-DS401,Health Care Data Analytics,3,1,0,0,4,Dr. Girirsh GN,Yes,110
+DSAI,7,B2-EC462,Generative AI,3,1,0,0,4,Dr. Chinmayananda,Yes,70
+DSAI,7,B2-EC465,Hands on CMOS Analog and RF circuit Design,3,1,0,0,4,Dr. Rajesh Kumar,Yes,70
+DSAI,7,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr.Sandesh,Yes,200
+DSAI,7,B2-PH454,Quantum AI+ Quantum Gen AI: Generative Models on Quantum Platform,3,1,0,0,4,Dr. Ashwath Babu & Prof. Ravi Shankar,Yes,70
+DSAI,7,B3-CS457,DevOps and its applications,3,1,0,0,4,Dr. Shirshendu Layek,Yes,110
+DSAI,7,B3-DS458,Agentic AI,3,1,0,0,4,Dr. Sunil Saumya,Yes,70
+DSAI,7,B3-CS468,Information Retrival,3,1,0,0,4,Dr. Krishnendu,Yes,70
+DSAI,7,B3-CS473,Cloud SRE and Security,3,1,0,0,4,Dr. Malay,Yes,70
+DSAI,7,B3-NEW,Software Defined Networks,3,1,0,0,4,Dr. Jagadeesha R Bhat,Yes,70
+DSAI,7,B4-CS470,AI for Cybersecurity,3,1,0,0,4,Dr. Abdul Wahid,Yes,70
+DSAI,7,B4-DS102,Finance and Accounting,3,1,0,0,4,Dr. Anushree Kini,Yes,200
+DSAI,7,B4-MA452,Operation Research,3,1,0,0,4,Dr. Anand B,Yes,70
+DSAI,7,B4-EC463,Energy Efficient Neural Networks,3,1,0,0,4,Dr. Jagdeesh DN,Yes,70
+ECE,1,CS161,Problem Solving Through Programming,3,0,2,0,4,Dr. Animesh Roy,Yes,80
+ECE,1,MA161,Statistics ,3,1,0,0,2,Dr. Ramesh Athe,Yes,215
+ECE,1,DS161,Introduction To DSAI,3,1,0,0,2,Dr. Girirsh Revadigar,Yes,215
+ECE,1,HS161,Economics / IET,3,0,0,0,3,Dr. Anushree Kini,Yes,70
+ECE,1,MA162,Probability,3,1,0,0,2,Dr. Chinmayananda,No,215
+ECE,1,EC161,Digital Design,3,0,2,0,2,Dr. Prakash Pawar,No,80
+ECE,1,B1-PHD151,Introduction to Quantum Physics,3,1,0,0,2,Dr. Ashwath Babu & Prof. Ravi Shankar,Yes,80
+ECE,1,B1-DS151,Linux for Engineers,3,1,0,0,2,Dr. Vivekraj,Yes,80
+ECE,1,B1-NEW,Fundaments of Sensing and Control,3,1,0,0,2,Dr. Mallikarjun ,Yes,80
+ECE,1,B1-HS157,Computational Musicology for Hindustani Music,3,0,0,0,1,Dr. Chandrika Kamat,Yes,80
+ECE,1,B1-NEW,Kannada Kalinali,3,1,0,0,2,Dr Ramesh Athe,Yes,80
+ECE,1,B1-NEW,Leveraging IT for social good,3,1,0,0,2,Dr. Rajesh NS,Yes,80
+ECE,1,B1-NEW,Basics of design,3,1,0,0,2,Dr. Sandesh P,Yes,70
+ECE,1,B1-HS156,Holistic Personality Development,3,0,0,0,2,Dr. Rajesh NS,Yes,70
+ECE,1,B2-CS151,Introduction to CyberSecurity,3,1,0,0,2,Dr. Girish Revadigar,No,120
+ECE,3,MA261,Multivariable Calculus,3,1,0,0,2,Dr. Somen B,Yes,170
+ECE,3,MA262,Differential Equations,3,1,0,0,2,Dr. Anand P Barangi,Yes,170
+ECE,3,MA263,Random Process,3,1,0,0,2,Dr. Chinmayananda A,Yes,66
+ECE,3,CS307,Machine Learning,3,1,0,0,4,Dr. Deepak K.T,Yes,66
+ECE,3,EC261,Signal & Systems,2,1,0,0,3,Dr. Somen B,Yes,66
+ECE,3,EC262,Semiconductor Devices,3,0,2,0,2,Dr. Pankaj Kumar,Yes,66
+ECE,3,EC263,Analog Electronics Circuits,3,0,2,0,2,Dr. Rajesh Kumar,Yes,66
+ECE,3,NEW,HSS/IE ,3,0,0,0,3,TBD,Yes,66
+ECE,3,B1-EC251,Electronics System Design-1,3,1,0,0,2,Dr. Pankaj Kumar,Yes,80
+ECE,3,B1-EC252,Introduction RFID Design,3,1,0,0,2,D. Rajesh Kumar,Yes,80
+ECE,3,B1-NEW,Electronics System Engineering,3,1,0,0,2,Dr. Mallikarjun ,Yes,80
+ECE,3,B1-CS152,Data Science with Python,3,1,0,0,2,Dr. Abdul Wahid,Yes,50
+ECE,3,B1-CS251,2D Computer Graphics,3,1,0,0,2,Dr. Vivekraj,Yes,30
+ECE,3,B2-NEW,Introduction to Embedded Signals Inteligence,3,1,0,0,2,Dr. Sibasankar Padhy,Yes,80
+ECE,3,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,170
+ECE,5,EC306,Digital Signal Processing,3,0,2,0,4,Dr. Sibasankar Padhy,Yes,80
+ECE,5,EC301,Introduction to VLSI Design,3,1,0,0,4,Dr. Jagdish D.N,Yes,80
+ECE,5,EC351,Introduction to Algorithms,3,1,0,0,4,Dr. Jagdish R.B,Yes,80
+ECE,5,HS351,Happiness & Wellbeing,3,0,0,0,3,Dr. Chandrika Kamath,Yes,80
+ECE,5,B1- CS463,Parallel computing,3,1,0,0,4,Dr. Pramod Yelmewad,Yes,70
+ECE,5,B1- CS308,Compiler Design,3,1,0,0,4,Dr. Pavan Kumar,Yes,70
+ECE,5,B1-DS301,Graphs and social networks,3,1,0,0,4,Dr. Utkarsh Khaire,Yes,70
+ECE,5,B1-CS366,Advanced algorithm Design,3,1,0,0,4,Dr. Suvadip H,Yes,200
+ECE,5,B2-DS359,Full stack Development,3,1,0,0,4,Dr. Manjuth KV,Yes,70
+ECE,5,B2-EC355,Internet of Things,3,1,0,0,4,Dr. Prakash Pawar,Yes,70
+ECE,5,B2-EC364,Semiconductor Device Modelling,3,1,0,0,4,Dr. Pankaj Kumar,Yes,70
+ECE,5,B2-CS352,Cryptography and information security,3,1,0,0,4,Dr. Rajendra H,Yes,70
+ECE,5,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,200
+ECE,5,B2-EC365,AI in biomedical signal interpretation,3,1,0,0,4,Dr. Sibasankar Padhy,Yes,70
+ECE,7,B1-DS456,CyberSecurity Techniques,3,1,0,0,4,Dr. Rajendra H,Yes,110
+ECE,7,B1-EC456,Reinforcement Learning,3,1,0,0,4,Dr. Dibyajyothi Guha,Yes,70
+ECE,7,B1-DS401,Health Care Data Analytics,3,1,0,0,4,Dr. Girirsh GN,Yes,110
+ECE,7,B2-EC462,Generative AI,3,1,0,0,4,Dr. Chinmayananda,Yes,70
+ECE,7,B2-EC465,Hands on CMOS Analog and RF circuit Design,3,1,0,0,4,Dr. Rajesh Kumar,Yes,70
+ECE,7,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr.Sandesh,Yes,200
+ECE,7,B2-PH454,Quantum AI+ Quantum Gen AI: Generative Models on Quantum Platform,3,1,0,0,4,Dr. Ashwath Babu & Prof. Ravi Shankar,Yes,70
+ECE,7,B3-CS457,DevOps and its applications,3,1,0,0,4,Dr. Shirshendu Layek,Yes,110
+ECE,7,B3-DS458,Agentic AI,3,1,0,0,4,Dr. Sunil Saumya,Yes,70
+ECE,7,B3-CS468,Information Retrival,3,1,0,0,4,Dr. Krishnendu,Yes,70
+ECE,7,B3-CS473,Cloud SRE and Security,3,1,0,0,4,Dr. Malay,Yes,70
+ECE,7,B3-NEW,Software Defined Networks,3,1,0,0,4,Dr. Jagadeesha R Bhat,Yes,70
+ECE,7,B4-CS470,AI for Cybersecurity,3,1,0,0,4,Dr. Abdul Wahid,Yes,70
+ECE,7,B4-DS102,Finance and Accounting,3,1,0,0,4,Dr. Anushree Kini,Yes,200
+ECE,7,B4-MA452,Operation Research,3,1,0,0,4,Dr. Anand B,Yes,70
+ECE,7,B4-EC463,Energy Efficient Neural Networks,3,1,0,0,4,Dr. Jagdeesh DN,Yes,70
