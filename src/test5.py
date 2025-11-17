@@ -121,19 +121,28 @@ def generate_time_slots():
     - Lunch break: 13:00-14:00
     """
     slots = []
-    # Create uniform 30-minute slots from 07:30 to 20:00, include lunch window
-    from datetime import datetime as _dt, timedelta as _td
-    base_date = _dt(2000, 1, 1)
-    start_dt = base_date.replace(hour=7, minute=30)
-    end_dt = base_date.replace(hour=20, minute=0)
-    cur = start_dt
-    step = _td(minutes=30)
-    while cur < end_dt:
-        s = cur.time()
-        e = (cur + step).time()
-        slots.append((s, e))
-        cur += step
+    
+    slots = []
+    
+    slots.append((time(7, 30), time(9, 00)))    # 60 min
+    # slots.append((time(9, 30), time(9, 30)))    # 60 min
+    slots.append((time(9, 30), time(10, 30)))  # 60 min
+    slots.append((time(10, 30), time(11, 30))) # 60 min
+    slots.append((time(11, 30), time(12, 30))) # 60 min
+    slots.append((time(12, 30), time(13, 0)))    # 30 min
+    
+    # Lunch break: 13:00 - 14:00
+    slots.append((time(13, 0), time(14, 0)))    # BREAK
+    
+    # Afternoon session: 14:00 - 18:30 (continuous)
+    slots.append((time(14, 0), time(15, 0)))    # 60 min
+    slots.append((time(15, 0), time(16, 0)))    # 60 min
+    slots.append((time(16, 0), time(17, 0)))    # 60 min
+    slots.append((time(17, 0), time(18, 0)))    # 60 min
+    slots.append((time(18, 0), time(18, 30)))  # 30 min
+    slots.append((time(18, 30), time(20, 00)))  # 30 min
 
+    
     return slots
 
 TIME_SLOTS = generate_time_slots()
@@ -170,15 +179,13 @@ def is_break_time_slot(slot, semester=None):
 def is_minor_slot(slot):
     """Check if slot is early morning or late evening"""
     start, end = slot
-    # Treat 07:30 - 09:00 as the minor slot window
-    s_m = start.hour * 60 + start.minute
-    if 7 * 60 + 30 <= s_m < 9 * 60:
+    if start.hour < 8:
         return True
-
+    
     # Updated check for 18:30 (6:30 PM) or later
     if start.hour > 18 or (start.hour == 18 and start.minute >= 30):
         return True
-
+    
     return False
 
 def select_faculty(faculty_field):
@@ -349,54 +356,6 @@ def find_suitable_room_for_slot(course_code, room_type, day, slot_indices, room_
         course_room_mapping[mapping_key] = best_room
         return best_room
     
-    # If no single room fits for a lab, try combining two labs (preferred) whose
-    # combined capacity satisfies the student strength. We only attempt this for
-    # LAB components to keep labs inside lab rooms.
-    if room_type == 'COMPUTER_LAB':
-        lab_rooms = [rn for rn in all_room_names if rn in ROOM_DATA and ROOM_DATA[rn]['type'] in ['COMPUTER_LAB', 'HARDWARE_LAB']]
-        best_pair = None
-        best_pair_capacity = float('inf')
-
-        # Pre-create schedule entries for labs if missing
-        for rn in lab_rooms:
-            if rn not in room_schedule:
-                room_schedule[rn] = {d: set() for d in range(len(DAYS))}
-
-        # Try all pairs (order-independent)
-        for i in range(len(lab_rooms)):
-            for j in range(i+1, len(lab_rooms)):
-                r1 = lab_rooms[i]
-                r2 = lab_rooms[j]
-                cap1 = ROOM_DATA[r1]['capacity']
-                cap2 = ROOM_DATA[r2]['capacity']
-                combined = cap1 + cap2
-                if combined < student_strength:
-                    continue
-
-                # Both rooms must be available for all slot indices
-                avail1 = all(si not in room_schedule[r1][day] for si in slot_indices)
-                avail2 = all(si not in room_schedule[r2][day] for si in slot_indices)
-                if not (avail1 and avail2):
-                    continue
-
-                if combined < best_pair_capacity:
-                    best_pair = (r1, r2)
-                    best_pair_capacity = combined
-
-        if best_pair:
-            r1, r2 = best_pair
-            # Map to a display string like 'L207+L208'
-            combined_name = f"{r1}+{r2}"
-            course_room_mapping[mapping_key] = combined_name
-
-            # Book both rooms
-            for si in slot_indices:
-                room_schedule[r1][day].add(si)
-                room_schedule[r2][day].add(si)
-
-            print(f"    ⚠️ Combined labs assigned for {course_code}: {r1} + {r2} (combined capacity {best_pair_capacity}, needs {student_strength})")
-            return combined_name
-
     # No free and suitable room found
     return None
 
@@ -869,43 +828,20 @@ def generate_all_timetables():
                         # *** END NEW ***
                         
                         for si_idx, si in enumerate(slot_indices):
-                            # For baskets we want to display only the basket name (e.g., B1)
-                            # and the component type. But we must also ensure that ALL
-                            # faculties who teach electives in this basket are recorded
-                            # so they appear in the teacher timetables. Therefore we
-                            # always book the professor and the room, and we aggregate
-                            # faculty and classroom strings in the timetable cell.
+                            # Only fill the timetable if the slot is empty
                             if timetable[day][si]['type'] is None:
                                 timetable[day][si]['type'] = comp_type
-                                # Display only basket name (do NOT show course code)
-                                timetable[day][si]['code'] = f"{basket}" if si_idx == 0 else ''
-                                timetable[day][si]['name'] = ''
+                                # Display the base code (e.g., MA161-C004)
+                                timetable[day][si]['code'] = f"{basket}\n{base_code}" if si_idx == 0 else ''
+                                timetable[day][si]['name'] = name if si_idx == 0 else ''
                                 timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
                                 timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
-                            else:
-                                # If the slot is already filled by another elective in
-                                # the same basket, aggregate faculty and classroom
-                                # information so teacher timetables include all teachers.
-                                existing_fac = str(timetable[day][si].get('faculty') or '')
-                                if faculty and faculty not in existing_fac.split('/'):
-                                    if existing_fac.strip() == '':
-                                        timetable[day][si]['faculty'] = faculty
-                                    else:
-                                        timetable[day][si]['faculty'] = existing_fac + '/' + faculty
-
-                                existing_room = str(timetable[day][si].get('classroom') or '')
-                                if candidate_room and candidate_room not in existing_room.split('/'):
-                                    if existing_room.strip() == '':
-                                        timetable[day][si]['classroom'] = candidate_room
-                                    else:
-                                        timetable[day][si]['classroom'] = existing_room + '/' + candidate_room
-
-                            # Always book the professor and room schedule so they're
-                            # marked busy and rooms are reserved.
-                            professor_schedule[faculty][day].add(si)
-                            if candidate_room not in room_schedule:
-                                room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
-                            room_schedule[candidate_room][day].add(si)
+                                
+                                # Also book the professor and room
+                                professor_schedule[faculty][day].add(si)
+                                if candidate_room not in room_schedule:
+                                    room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
+                                room_schedule[candidate_room][day].add(si)
                         
                         if day not in course_day_components[base_code]:
                             course_day_components[base_code][day] = []
@@ -1118,7 +1054,6 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
         name = str(course.get('Course Name', '')).strip()
         faculty = select_faculty(course.get('Faculty', 'TBD'))
         student_strength = int(course.get('total_students', 50)) # <-- ADDED
-        basket = course.get('elective_basket') if 'elective_basket' in course else None
         
         if faculty not in professor_schedule:
             professor_schedule[faculty] = {d: set() for d in range(len(DAYS))}
@@ -1155,42 +1090,10 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                     
                     for si_idx, si in enumerate(slot_indices):
                         timetable[day][si]['type'] = comp_type
-
-                        # If this course belongs to an elective basket, display
-                        # only the basket name (e.g., B1) and aggregate faculty
-                        # and classroom strings so the teacher timetables pick up
-                        # all assigned teachers for that basket slot.
-                        if basket and pd.notna(basket):
-                            if timetable[day][si]['code'] == '':
-                                # Empty slot: write basket name and primary info
-                                timetable[day][si]['code'] = f"{basket}" if si_idx == 0 else ''
-                                timetable[day][si]['name'] = ''
-                                timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
-                                timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
-                            else:
-                                # Aggregate faculty
-                                existing_fac = str(timetable[day][si].get('faculty') or '')
-                                if faculty and faculty not in existing_fac.split('/'):
-                                    if existing_fac.strip() == '':
-                                        timetable[day][si]['faculty'] = faculty
-                                    else:
-                                        timetable[day][si]['faculty'] = existing_fac + '/' + faculty
-
-                                # Aggregate classroom
-                                existing_room = str(timetable[day][si].get('classroom') or '')
-                                if candidate_room and candidate_room not in existing_room.split('/'):
-                                    if existing_room.strip() == '':
-                                        timetable[day][si]['classroom'] = candidate_room
-                                    else:
-                                        timetable[day][si]['classroom'] = existing_room + '/' + candidate_room
-                        else:
-                            # Non-basket course: write course code as before
-                            timetable[day][si]['code'] = code if si_idx == 0 else ''
-                            timetable[day][si]['name'] = name if si_idx == 0 else ''
-                            timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
-                            timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
-
-                        # Always book the professor and room schedule
+                        timetable[day][si]['code'] = code if si_idx == 0 else ''
+                        timetable[day][si]['name'] = name if si_idx == 0 else ''
+                        timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
+                        timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
                         professor_schedule[faculty][day].add(si)
                         if candidate_room not in room_schedule:
                             room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
@@ -1297,27 +1200,6 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
                 
                 # Use the full code (including B1/B2) for coloring
                 full_code = code.replace('\n', '-') if '\n' in code else code
-
-                # If faculty is missing in the timetable cell, try to recover
-                # from the global `course_faculty_map` passed into this function.
-                try:
-                    fac_clean = str(fac).strip() if fac is not None else ''
-                except Exception:
-                    fac_clean = ''
-
-                if not fac_clean or fac_clean.upper() in ['TBD', 'NONE', 'NAN', '']:
-                    # Try full code then base code as fallbacks
-                    fac_lookup = None
-                    if full_code in course_faculty_map:
-                        fac_lookup = course_faculty_map.get(full_code)
-                    else:
-                        base_code = code.split('\n')[-1]
-                        fac_lookup = course_faculty_map.get(base_code)
-
-                    if fac_lookup:
-                        fac = fac_lookup
-                    else:
-                        fac = fac_clean
                 
                 if full_code in section_subject_color:
                     subj_color = section_subject_color.get(full_code)
