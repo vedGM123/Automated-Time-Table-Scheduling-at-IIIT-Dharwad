@@ -61,6 +61,10 @@ OUTPUT_DIR = PROJECT_DIR / "output"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+# Meta entries collected while writing timetables so teacher generator can
+# pick up faculty/room info even when cells hide them for basket display.
+META_ENTRIES = []
+
 # ---------------------------
 # Load CSVs
 # ---------------------------
@@ -355,8 +359,65 @@ def find_suitable_room_for_slot(course_code, room_type, day, slot_indices, room_
     if best_room:
         course_room_mapping[mapping_key] = best_room
         return best_room
-    
-    # No free and suitable room found
+
+    # Special preference: if the course has more than 120 students and room C004
+    # exists (240 seater), prefer assigning C004 for non-lab components and do
+    # NOT fall back to combining smaller rooms. This keeps large courses in
+    # the single large hall instead of splitting across multiple rooms.
+    try:
+        if student_strength > 120 and 'C004' in ROOM_DATA and room_type != 'COMPUTER_LAB':
+            c004 = ROOM_DATA['C004']
+            if c004['capacity'] >= student_strength:
+                # Ensure room schedule entry exists
+                if 'C004' not in room_schedule:
+                    room_schedule['C004'] = {d: set() for d in range(len(DAYS))}
+                if all(si not in room_schedule['C004'][day] for si in slot_indices):
+                    course_room_mapping[mapping_key] = 'C004'
+                    for si in slot_indices:
+                        room_schedule['C004'][day].add(si)
+                    print(f"    ✅ Assigned C004 for large course {course_code} (needs {student_strength})")
+                    return 'C004'
+    except Exception:
+        # If anything goes wrong with the C004 attempt, fall through to normal logic
+        pass
+
+    # If this is a LAB component, try to find two lab rooms whose combined
+    # capacity meets the student strength (preferred over leaving unscheduled).
+    if room_type == 'COMPUTER_LAB':
+        lab_room_names = [rn for rn, info in ROOM_DATA.items() if info['type'] in ('COMPUTER_LAB', 'HARDWARE_LAB')]
+        best_pair = None
+        best_pair_cap = float('inf')
+
+        # Ensure schedule entries exist
+        for rn in lab_room_names:
+            if rn not in room_schedule:
+                room_schedule[rn] = {d: set() for d in range(len(DAYS))}
+
+        for i in range(len(lab_room_names)):
+            for j in range(i+1, len(lab_room_names)):
+                r1 = lab_room_names[i]
+                r2 = lab_room_names[j]
+                # both must be available for all slot indices
+                avail1 = all(si not in room_schedule[r1][day] for si in slot_indices)
+                avail2 = all(si not in room_schedule[r2][day] for si in slot_indices)
+                if not (avail1 and avail2):
+                    continue
+                cap_sum = ROOM_DATA[r1]['capacity'] + ROOM_DATA[r2]['capacity']
+                if cap_sum >= student_strength and cap_sum < best_pair_cap:
+                    best_pair = (r1, r2)
+                    best_pair_cap = cap_sum
+
+        if best_pair:
+            r1, r2 = best_pair
+            combined_name = f"{r1}+{r2}"
+            course_room_mapping[mapping_key] = combined_name
+            for si in slot_indices:
+                room_schedule[r1][day].add(si)
+                room_schedule[r2][day].add(si)
+            print(f"    ✅ Assigned combined labs {combined_name} for {course_code} (combined capacity {best_pair_cap}, needs {student_strength})")
+            return combined_name
+
+    # No single free and suitable room found
     return None
 
 def find_consecutive_slots_for_minutes(timetable, day, start_idx, required_minutes,
@@ -966,6 +1027,21 @@ def generate_all_timetables():
     # Format overview sheet
     format_overview_sheet(overview, row_index)
 
+    # Write meta entries into a hidden sheet so teacher generator can read
+    if META_ENTRIES:
+        try:
+            meta_ws = wb.create_sheet('_META')
+            headers = ['sheet', 'row', 'start_col', 'end_col', 'faculty', 'classroom', 'typ', 'code']
+            meta_ws.append(headers)
+            for me in META_ENTRIES:
+                meta_ws.append([
+                    me.get('sheet'), me.get('row'), me.get('start_col'), me.get('end_col'),
+                    me.get('faculty'), me.get('classroom'), me.get('typ'), me.get('code')
+                ])
+            meta_ws.sheet_state = 'hidden'
+        except Exception:
+            pass
+
     # Save workbook
     out_filename = os.path.join(OUTPUT_DIR, "timetable_all_departments.xlsx")
     try:
@@ -1046,80 +1122,201 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                 section_subject_color[code] = random.choice(SUBJECT_COLORS)
             course_faculty_map[code] = select_faculty(c.get('Faculty', 'TBD'))
     
-    # This loop processes 7th sem electives.
-    # It will correctly schedule B1, B2, B3, B4 in parallel
-    for _, course in courses_combined.iterrows():
-        code = str(course.get('Course Code', '')).strip()
+    # Schedule non-electives as before, and schedule elective baskets together
+    non_electives = courses_combined[courses_combined['is_elective'] == False]
+    electives = courses_combined[courses_combined['is_elective'] == True]
+
+    # Helper to schedule a single course (reuse existing pattern)
+    def schedule_single_course(course_row):
+        code = str(course_row.get('Course Code', '')).strip()
         base_code = get_base_course_code(code)
-        name = str(course.get('Course Name', '')).strip()
-        faculty = select_faculty(course.get('Faculty', 'TBD'))
-        student_strength = int(course.get('total_students', 50)) # <-- ADDED
-        
+        name = str(course_row.get('Course Name', '')).strip()
+        faculty = select_faculty(course_row.get('Faculty', 'TBD'))
+        student_strength = int(course_row.get('total_students', 50))
+
         if faculty not in professor_schedule:
             professor_schedule[faculty] = {d: set() for d in range(len(DAYS))}
-        
         if base_code not in course_day_components:
             course_day_components[base_code] = {}
-        
-        lec_count, tut_count, lab_count, _ = calculate_required_minutes(course)
+
+        lec_count, tut_count, lab_count, _ = calculate_required_minutes(course_row)
         lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
         tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
         lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
-        
-        def schedule_component(required_minutes, comp_type, student_strength, attempts_limit=5000):
+
+        def schedule_component(required_minutes, comp_type, student_strength_local, faculty_local, code_local, name_local):
             room_type = get_required_room_type(comp_type)
-            
-            for attempt in range(attempts_limit):
+            for attempt in range(5000):
                 day = random.randint(0, len(DAYS)-1)
                 starts = get_all_possible_start_indices()
-                
                 for start_idx in starts:
-                    # *** MODIFIED FIX ***
-                    # Use the full 'code' for shared 7th sem electives too
                     slot_indices, candidate_room = find_consecutive_slots_for_minutes(
                         timetable, day, start_idx, required_minutes, 7,
-                        professor_schedule, faculty, room_schedule, room_type,
-                        code, course_room_mapping, comp_type, course_day_components,
-                        student_strength # <-- ADDED
+                        professor_schedule, faculty_local, room_schedule, room_type,
+                        code_local, course_room_mapping, comp_type, course_day_components,
+                        student_strength_local
                     )
-                    
                     if slot_indices is None or candidate_room is None:
                         continue
-                    if not check_professor_availability(professor_schedule, faculty, day, slot_indices[0], len(slot_indices)):
+                    if not check_professor_availability(professor_schedule, faculty_local, day, slot_indices[0], len(slot_indices)):
                         continue
-                    
                     for si_idx, si in enumerate(slot_indices):
                         timetable[day][si]['type'] = comp_type
-                        timetable[day][si]['code'] = code if si_idx == 0 else ''
-                        timetable[day][si]['name'] = name if si_idx == 0 else ''
-                        timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
+                        timetable[day][si]['code'] = code_local if si_idx == 0 else ''
+                        timetable[day][si]['name'] = name_local if si_idx == 0 else ''
+                        timetable[day][si]['faculty'] = faculty_local if si_idx == 0 else ''
                         timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
-                        professor_schedule[faculty][day].add(si)
+                        professor_schedule[faculty_local][day].add(si)
                         if candidate_room not in room_schedule:
                             room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
                         room_schedule[candidate_room][day].add(si)
-                    
-                    if day not in course_day_components[base_code]:
-                        course_day_components[base_code][day] = []
-                    course_day_components[base_code][day].append(comp_type)
-                    
+                    if day not in course_day_components[get_base_course_code(code_local)]:
+                        course_day_components[get_base_course_code(code_local)][day] = []
+                    course_day_components[get_base_course_code(code_local)][day].append(comp_type)
                     return True
             return False
-        
+
         for _ in range(lec_sessions_needed):
-            ok = schedule_component(LECTURE_MIN, 'LEC', student_strength)
+            ok = schedule_component(LECTURE_MIN, 'LEC', student_strength, faculty, code, name)
             if not ok:
                 add_unscheduled_course(unscheduled_components, "Common_7th", 7, code, name, faculty, 'LEC', 0, f"Could not find suitable slot (Needs {student_strength} capacity)")
-        
         for _ in range(tut_sessions_needed):
-            ok = schedule_component(TUTORIAL_MIN, 'TUT', student_strength)
+            ok = schedule_component(TUTORIAL_MIN, 'TUT', student_strength, faculty, code, name)
             if not ok:
                 add_unscheduled_course(unscheduled_components, "Common_7th", 7, code, name, faculty, 'TUT', 0, f"Could not find suitable slot (Needs {student_strength} capacity)")
-        
         for _ in range(lab_sessions_needed):
-            ok = schedule_component(LAB_MIN, 'LAB', student_strength)
+            ok = schedule_component(LAB_MIN, 'LAB', student_strength, faculty, code, name)
             if not ok:
                 add_unscheduled_course(unscheduled_components, "Common_7th", 7, code, name, faculty, 'LAB', 0, f"No computer lab available (Needs {student_strength} capacity)")
+
+    # Schedule non-elective courses normally
+    for _, course in non_electives.iterrows():
+        schedule_single_course(course)
+
+    # Group electives by basket and schedule each basket as a unit
+    if not electives.empty:
+        baskets = {}
+        for _, row in electives.iterrows():
+            basket = extract_elective_basket(str(row.get('Course Code', '')).strip())
+            if not basket:
+                continue
+            baskets.setdefault(basket, []).append(row)
+
+        for basket_label, rows in baskets.items():
+            # Use first row as representative for LTPS structure
+            first = rows[0]
+            lec_count, tut_count, lab_count, _ = calculate_required_minutes(first)
+            lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+            tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
+            lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
+
+            # Aggregate faculties and student strengths
+            facs = [select_faculty(r.get('Faculty', 'TBD')) for r in rows]
+            facs = [f for f in facs if f]
+            unique_facs = list(dict.fromkeys(facs))
+            agg_faculty = '/'.join(unique_facs) if unique_facs else 'TBD'
+            total_strength = sum(int(r.get('total_students', 50)) for r in rows)
+
+            # Representative base code (used for meta); prefer first course's base
+            rep_code = str(first.get('Course Code', '')).strip()
+            rep_base = get_base_course_code(rep_code)
+
+            # Ensure professor_schedule entries exist for all faculties
+            for f in unique_facs:
+                if f not in professor_schedule:
+                    professor_schedule[f] = {d: set() for d in range(len(DAYS))}
+
+            def schedule_basket_component(required_minutes, comp_type, student_strength_local, faculties_local):
+                room_type = get_required_room_type(comp_type)
+                for attempt in range(5000):
+                    day = random.randint(0, len(DAYS)-1)
+                    starts = get_all_possible_start_indices()
+                    for start_idx in starts:
+                        # Build slot_indices manually (same slot for all courses)
+                        slot_indices_local = []
+                        acc = 0
+                        i = start_idx
+                        while i < len(TIME_SLOTS) and acc < required_minutes:
+                            if is_minor_slot(TIME_SLOTS[i]) or is_break_time_slot(TIME_SLOTS[i], 7):
+                                break
+                            if timetable[day][i]['type'] is not None:
+                                break
+                            slot_indices_local.append(i)
+                            acc += slot_minutes(TIME_SLOTS[i])
+                            i += 1
+                        if acc < required_minutes:
+                            continue
+
+                        # Try to find a separate room for each course in this basket for the same slot_indices
+                        course_room_map = {}
+                        failed = False
+                        rooms_assigned = []
+                        faculties_assigned = []
+
+                        for row in rows:
+                            course_code = str(row.get('Course Code', '')).strip()
+                            base = get_base_course_code(course_code)
+                            faculty_c = select_faculty(row.get('Faculty', 'TBD'))
+                            strength_c = int(row.get('total_students', 50))
+                            room_type_c = get_required_room_type(comp_type)
+
+                            # Check professor availability
+                            if not check_professor_availability(professor_schedule, faculty_c, day, slot_indices_local[0], len(slot_indices_local)):
+                                failed = True
+                                break
+
+                            # Find a suitable room for this course for these exact slot indices
+                            candidate_room_c = find_suitable_room_for_slot(course_code, room_type_c, day, slot_indices_local, room_schedule, course_room_mapping, comp_type, strength_c)
+                            if candidate_room_c is None:
+                                failed = True
+                                break
+
+                            # Tentatively record assignment
+                            course_room_map[course_code] = (candidate_room_c, faculty_c, base)
+                            rooms_assigned.append(candidate_room_c)
+                            faculties_assigned.append(faculty_c)
+
+                        if failed:
+                            # revert any tentative course_room_mapping done by find_suitable_room_for_slot? (mapping is persistent)
+                            continue
+
+                        # All courses in basket can be placed in these slot_indices; commit assignments
+                        for si_idx, si in enumerate(slot_indices_local):
+                            timetable[day][si]['type'] = comp_type
+                            # Visible code shows basket label and a representative base (first course)
+                            timetable[day][si]['code'] = f"{basket_label}\n{rep_base}" if si_idx == 0 else ''
+                            timetable[day][si]['name'] = basket_label if si_idx == 0 else ''
+                            # Aggregate faculties and rooms for meta/display
+                            timetable[day][si]['faculty'] = '/'.join(unique_facs) if si_idx == 0 else ''
+                            timetable[day][si]['classroom'] = '/'.join(rooms_assigned) if si_idx == 0 else ''
+
+                            # Mark professors and rooms busy per course
+                            for course_code, (room_c, fac_c, base_c) in course_room_map.items():
+                                professor_schedule[fac_c][day].add(si)
+                                if room_c not in room_schedule:
+                                    room_schedule[room_c] = {d: set() for d in range(len(DAYS))}
+                                room_schedule[room_c][day].add(si)
+
+                        if rep_base not in course_day_components:
+                            course_day_components[rep_base] = {}
+                        if day not in course_day_components[rep_base]:
+                            course_day_components[rep_base][day] = []
+                        course_day_components[rep_base][day].append(comp_type)
+                        return True
+                return False
+
+            for _ in range(lec_sessions_needed):
+                ok = schedule_basket_component(LECTURE_MIN, 'LEC', total_strength, unique_facs)
+                if not ok:
+                    add_unscheduled_course(unscheduled_components, "Common_7th", 7, basket_label, basket_label, agg_faculty, 'LEC', 0, f"Could not schedule basket {basket_label} (Needs {total_strength} capacity)")
+            for _ in range(tut_sessions_needed):
+                ok = schedule_basket_component(TUTORIAL_MIN, 'TUT', total_strength, unique_facs)
+                if not ok:
+                    add_unscheduled_course(unscheduled_components, "Common_7th", 7, basket_label, basket_label, agg_faculty, 'TUT', 0, f"Could not schedule basket {basket_label} (Needs {total_strength} capacity)")
+            for _ in range(lab_sessions_needed):
+                ok = schedule_basket_component(LAB_MIN, 'LAB', total_strength, unique_facs)
+                if not ok:
+                    add_unscheduled_course(unscheduled_components, "Common_7th", 7, basket_label, basket_label, agg_faculty, 'LAB', 0, f"Could not schedule basket {basket_label} labs (Needs {total_strength} capacity)")
     
     write_timetable_to_sheet(ws, timetable, section_subject_color, course_faculty_map, 
                              courses_combined, course_room_mapping, 7)
@@ -1192,9 +1389,35 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
                 while j < len(TIME_SLOTS) and timetable[day_idx][j]['type'] is not None and timetable[day_idx][j]['code'] == '':
                     span.append(j)
                     j += 1
-                
-                if '\n' in code and code.startswith('B'):
-                    display = f"{code}\n{typ}\nRoom: {cls}\n{fac}"
+                import re
+                # Detect basket entries even when stored as 'B1\nBASECODE'
+                raw_code = str(code) if code is not None else ''
+                parts = [p.strip() for p in raw_code.splitlines() if p.strip()]
+                basket_label = None
+                base_code = ''
+                if parts and re.match(r'^B\d+$', parts[0].upper()):
+                    basket_label = parts[0].upper()
+                    if len(parts) > 1:
+                        base_code = parts[1]
+                elif re.match(r'^B\d+$', raw_code.strip().upper()):
+                    basket_label = raw_code.strip().upper()
+
+                if basket_label:
+                    # Record metadata so teacher generator can still pick up
+                    # faculty and room info, but display only basket+type.
+                    start_col = slot_idx + 2
+                    end_col = slot_idx + 2 + len(span) - 1
+                    META_ENTRIES.append({
+                        'sheet': ws.title,
+                        'row': row_num,
+                        'start_col': start_col,
+                        'end_col': end_col,
+                        'faculty': fac,
+                        'classroom': cls,
+                        'typ': typ,
+                        'code': base_code or basket_label
+                    })
+                    display = f"{basket_label}\n{typ}"
                 else:
                     display = f"{code}\n{typ}\nRoom: {cls}\n{fac}"
                 
@@ -1432,6 +1655,32 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
     
     teacher_slots = {}
     slot_headers = []
+
+    # Load meta information if present so teacher workbook can be built
+    meta_map = {}
+    if '_META' in wb.sheetnames:
+        meta_ws = wb['_META']
+        try:
+            for r in range(2, meta_ws.max_row + 1):
+                m_sheet = meta_ws.cell(r, 1).value
+                m_row = meta_ws.cell(r, 2).value
+                m_start = meta_ws.cell(r, 3).value
+                m_end = meta_ws.cell(r, 4).value
+                m_fac = meta_ws.cell(r, 5).value
+                m_room = meta_ws.cell(r, 6).value
+                m_typ = meta_ws.cell(r, 7).value
+                m_code = meta_ws.cell(r, 8).value
+                if not m_sheet or not m_row or not m_start:
+                    continue
+                for col in range(int(m_start), int(m_end) + 1):
+                    meta_map[(m_sheet, int(m_row), int(col))] = {
+                        'faculty': m_fac,
+                        'room': m_room,
+                        'typ': m_typ,
+                        'code': m_code
+                    }
+        except Exception:
+            meta_map = {}
     
     for sheetname in wb.sheetnames:
         if sheetname.lower() == 'overview':
@@ -1440,19 +1689,33 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
         header = [str(ws.cell(1, c).value).strip() if ws.cell(1, c).value else '' for c in range(2, ws.max_column + 1)]
         if len(header) > len(slot_headers):
             slot_headers = header
-        
+
         for r in range(2, ws.max_row + 1):
             day = ws.cell(r, 1).value
             if not day or str(day) not in DAYS:
                 break
             day_idx = DAYS.index(day)
-            
+
             for c in range(2, ws.max_column + 1):
+                # If there's meta info for this exact cell use it
+                if (sheetname, r, c) in meta_map:
+                    m = meta_map[(sheetname, r, c)]
+                    faculty = m.get('faculty')
+                    room = m.get('room')
+                    typ = m.get('typ')
+                    code = m.get('code')
+                    fac_list = split_faculty_names(faculty)
+                    for f in fac_list:
+                        if not f or str(f).strip().upper() in ["BREAK", "MINOR SLOT", "NAN", "NONE", "", "LUNCH BREAK"]:
+                            continue
+                        teacher_slots.setdefault(f, {d: {i: '' for i in range(len(slot_headers))} for d in range(len(DAYS))})
+                        teacher_slots[f][day_idx][c - 2] = f"{code} {typ}\n({sheetname})\nRoom: {room}" if code else ''
+                    continue
+
                 code, typ, room, faculty = parse_cell_for_course(ws.cell(r, c).value)
                 for f in split_faculty_names(faculty):
                     if not f or str(f).strip().upper() in ["BREAK", "MINOR SLOT", "NAN", "NONE", "", "LUNCH BREAK"]:
                         continue
-                    
                     teacher_slots.setdefault(f, {d: {i: '' for i in range(len(slot_headers))} for d in range(len(DAYS))})
                     teacher_slots[f][day_idx][c - 2] = f"{code} {typ}\n({sheetname})\nRoom: {room}" if code else ''
     
