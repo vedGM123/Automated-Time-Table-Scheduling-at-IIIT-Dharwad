@@ -1,7 +1,7 @@
 # TT_gen.py -- Complete Fixed Timetable Generator
 # Fixes applied:
 # 1. Removed 10:30-10:45 break
-# 2. Changed lunch break to 13:00-14:00
+# 2. Changed lunch break to 13:15-14:00
 # 3. Better time slot generation
 # 4. Fixed elective basket scheduling
 # 5. Supports increased lab capacity (80 students)
@@ -41,7 +41,7 @@ SELF_STUDY_MIN = config.get("SELF_STUDY_MIN", 60)
 MIN_GAP_BETWEEN_LECTURES = 10
 
 # Updated break windows - REMOVED morning break, extended lunch
-LUNCH_BREAK_START = time(13, 0)
+LUNCH_BREAK_START = time(13, 15)
 LUNCH_BREAK_END = time(14, 0)
 
 @dataclass
@@ -122,7 +122,7 @@ def generate_time_slots():
     """
     Generate continuous 60 and 30 minute time slots for flexibility.
     - NO morning break (removed 10:30-10:45)
-    - Lunch break: 13:00-14:00
+    - Lunch break: 13:15-14:00
     """
     slots = []
     
@@ -130,27 +130,35 @@ def generate_time_slots():
     
     slots.append((time(7, 30), time(9, 00)))    # 60 min
     # slots.append((time(9, 30), time(9, 30)))    # 60 min
-    slots.append((time(9, 30), time(10, 30)))  # 60 min
-    slots.append((time(10, 30), time(11, 30))) # 60 min
-    slots.append((time(11, 30), time(12, 30))) # 60 min
-    slots.append((time(12, 30), time(13, 0)))    # 30 min
-    
-    # Lunch break: 13:00 - 14:00
-    slots.append((time(13, 0), time(14, 0)))    # BREAK
+    slots.append((time(9, 00), time(10, 00)))  # 60 min
+    slots.append((time(10, 00), time(10, 30))) # 60 min
+    slots.append((time(10, 30), time(10, 45))) # 60 min
+    slots.append((time(10, 45), time(11, 00)))    # 30 min
+    slots.append((time(11, 00), time(11, 30)))
+    slots.append((time(11, 30), time(12, 00)))
+    slots.append((time(12, 00), time(12, 15)))
+    slots.append((time(12, 15), time(12, 30)))
+    slots.append((time(12, 30), time(13, 15)))
+    # Lunch break: 13:15 - 14:00
+    slots.append((time(13, 15), time(14, 0)))    # BREAK
     
     # Afternoon session: 14:00 - 18:30 (continuous)
-    slots.append((time(14, 0), time(15, 0)))    # 60 min
-    slots.append((time(15, 0), time(16, 0)))    # 60 min
-    slots.append((time(16, 0), time(17, 0)))    # 60 min
-    slots.append((time(17, 0), time(18, 0)))    # 60 min
-    slots.append((time(18, 0), time(18, 30)))  # 30 min
-    slots.append((time(18, 30), time(20, 00)))  # 30 min
+    slots.append((time(14, 0), time(14, 30)))    # 60 min
+    slots.append((time(14, 30), time(15, 30)))    # 60 min
+    slots.append((time(15, 30), time(15, 40)))    # 60 min
+    slots.append((time(15, 40), time(16, 00)))    # 60 min
+    slots.append((time(16, 00), time(16, 30)))  # 30 min
+    slots.append((time(16, 30), time(17, 10)))
+    slots.append((time(17, 10), time(17, 30)))
+    slots.append((time(17, 30), time(18, 30)))  # 60/60 min
+    # Evening minor slot added: 18:30 - 20:00
+    slots.append((time(18, 30), time(20, 0)))
 
     
     return slots
 
 TIME_SLOTS = generate_time_slots()
-print(f"⏰ Generated {len(TIME_SLOTS)} time slots (no morning break, lunch 13:00-14:00)")
+print(f"⏰ Generated {len(TIME_SLOTS)} time slots (no morning break, lunch 13:15-14:00)")
 
 # ---------------------------
 # Helper functions
@@ -461,6 +469,38 @@ def find_consecutive_slots_for_minutes(timetable, day, start_idx, required_minut
         # *** MODIFIED: Pass the *full code* for C004 check ***
         # For non-elective core courses, course_code is the base_code (e.g., "MA161-CSE")
         # For electives, this will be the full code (e.g., "B1-PHD151")
+        # Enforce a minimum break between two lectures by rejecting placements
+        # that are immediately adjacent to another lecture in the same
+        # timetable (student/section) or adjacent to a professor's lecture.
+        # This approximates a 10-minute gap by preventing contiguous LEC slots.
+        try:
+            # previous slot
+            prev_idx = slot_indices[0] - 1
+            if prev_idx >= 0:
+                prev_type = timetable[day][prev_idx]['type']
+                if prev_type == 'LEC':
+                    return None, None
+                # Prevent two LABs back-to-back for the same timetable/section
+                if component_type == 'LAB' and prev_type == 'LAB':
+                    return None, None
+                # professor adjacent constraint
+                if faculty in professor_schedule and prev_idx in professor_schedule[faculty][day]:
+                    return None, None
+            # next slot
+            next_idx = slot_indices[-1] + 1
+            if next_idx < len(TIME_SLOTS):
+                next_type = timetable[day][next_idx]['type']
+                if next_type == 'LEC':
+                    return None, None
+                # Prevent two LABs back-to-back for the same timetable/section
+                if component_type == 'LAB' and next_type == 'LAB':
+                    return None, None
+                if faculty in professor_schedule and next_idx in professor_schedule[faculty][day]:
+                    return None, None
+        except Exception:
+            # If any issue evaluating adjacency, fall back to usual behavior
+            pass
+
         room = find_suitable_room_for_slot(course_code, room_type, day, slot_indices, 
                                            room_schedule, course_room_mapping, component_type,
                                            student_strength) # <-- ADDED
@@ -682,6 +722,14 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                 
                 # *** MODIFIED: Check only against the current basket type's global slots ***
                 if valid and accumulated >= LAB_MIN and len(slot_indices) > 0:
+                    # Prevent two LABs back-to-back for the same section/timetable
+                    prev_idx = slot_indices[0] - 1
+                    if prev_idx >= 0 and timetable[day][prev_idx]['type'] == 'LAB':
+                        continue
+                    next_idx = slot_indices[-1] + 1
+                    if next_idx < len(TIME_SLOTS) and timetable[day][next_idx]['type'] == 'LAB':
+                        continue
+
                     if any(s in current_basket_global_slots[day] for s in slot_indices):
                         continue # Slot already taken by another 'B1' course, try again
                         
@@ -759,9 +807,10 @@ def generate_all_timetables():
     unscheduled_components = []
 
     SUBJECT_COLORS = [
-        "FF6B6B", "4ECDC4", "FF9F1C", "5D5FEF", "45B7D1",
-        "F72585", "7209B7", "3A0CA3", "4361EE", "4CC9F0",
-        "06D6A0", "FFD166", "EF476F", "118AB2", "073B4C"
+        # Slightly darker pastel palette for improved contrast
+        "FFDAB3", "C8E6C9", "BBDEFB", "FFD0E6", "FFF3BF",
+        "E1BEE7", "CDEFEA", "FFD6D6", "F0F4C3", "DFF3D6",
+        "FFD6D1", "E6D6FF", "E6F0A8", "DDEEFF", "E6D6EE"
     ]
 
     seventh_sem_processed = False
@@ -1215,7 +1264,9 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
             facs = [f for f in facs if f]
             unique_facs = list(dict.fromkeys(facs))
             agg_faculty = '/'.join(unique_facs) if unique_facs else 'TBD'
-            total_strength = sum(int(r.get('total_students', 50)) for r in rows)
+            # For 7th-semester basket scheduling, use the maximum course size
+            # among basket options rather than summing all student counts.
+            total_strength = max((int(r.get('total_students', 50)) for r in rows), default=50)
 
             # Representative base code (used for meta); prefer first course's base
             rep_code = str(first.get('Course Code', '')).strip()
@@ -1225,6 +1276,10 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
             for f in unique_facs:
                 if f not in professor_schedule:
                     professor_schedule[f] = {d: set() for d in range(len(DAYS))}
+            # Track which days have already been used for this basket (so
+            # multiple sessions of the same component type aren't placed
+            # on the same weekday).
+            scheduled_days_for_basket = set()
 
             def schedule_basket_component(required_minutes, comp_type, student_strength_local, faculties_local):
                 room_type = get_required_room_type(comp_type)
@@ -1245,6 +1300,18 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                             acc += slot_minutes(TIME_SLOTS[i])
                             i += 1
                         if acc < required_minutes:
+                            continue
+                        # Prevent two LABs back-to-back when scheduling basket labs
+                        if comp_type == 'LAB':
+                            prev_idx = slot_indices_local[0] - 1
+                            if prev_idx >= 0 and timetable[day][prev_idx]['type'] == 'LAB':
+                                continue
+                            next_idx = slot_indices_local[-1] + 1
+                            if next_idx < len(TIME_SLOTS) and timetable[day][next_idx]['type'] == 'LAB':
+                                continue
+                        # Don't schedule multiple sessions of the same basket
+                        # on the same weekday; skip if this day already used.
+                        if day in scheduled_days_for_basket:
                             continue
 
                         # Try to find a separate room for each course in this basket for the same slot_indices
@@ -1302,6 +1369,10 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                         if day not in course_day_components[rep_base]:
                             course_day_components[rep_base][day] = []
                         course_day_components[rep_base][day].append(comp_type)
+                        # Mark this day as used for this basket so subsequent
+                        # sessions (LEC/TUT/LAB) for the same basket won't
+                        # be scheduled again on the same weekday.
+                        scheduled_days_for_basket.add(day)
                         return True
                 return False
 
@@ -1333,8 +1404,9 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
     ws.append(header)
     
     # Styling
-    header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-    header_font = Font(bold=True)
+    # Darker, still soft header styling for better contrast
+    header_fill = PatternFill(start_color="BBDEFB", end_color="BBDEFB", fill_type="solid")
+    header_font = Font(bold=True, size=11, color="000000")
     header_alignment = Alignment(horizontal='center', vertical='center')
     for cell in ws[1]:
         cell.fill = header_fill
@@ -1343,11 +1415,12 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
     
     border = Border(left=Side(style='thin'), right=Side(style='thin'), 
                     top=Side(style='thin'), bottom=Side(style='thin'))
-    lec_fill_default = PatternFill(start_color="FA8072", end_color="FA8072", fill_type="solid")
-    lab_fill_default = PatternFill(start_color="7CFC00", end_color="7CFC00", fill_type="solid")
-    tut_fill_default = PatternFill(start_color="87CEEB", end_color="87CEEB", fill_type="solid")
-    break_fill = PatternFill(start_color="C0C0C0", end_color="C0C0C0", fill_type="solid")
-    minor_fill = PatternFill(start_color="9ACD32", end_color="9ACD32", fill_type="solid")
+    # Slightly stronger fills for component type defaults (better readability)
+    lec_fill_default = PatternFill(start_color="FFDAB3", end_color="FFDAB3", fill_type="solid")
+    lab_fill_default = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
+    tut_fill_default = PatternFill(start_color="BBDEFB", end_color="BBDEFB", fill_type="solid")
+    break_fill = PatternFill(start_color="E0E0E0", end_color="E0E0E0", fill_type="solid")
+    minor_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
     
     # Write timetable rows
     for day_idx, day_name in enumerate(DAYS):
@@ -1467,6 +1540,16 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
     # Set row heights
     for row in ws.iter_rows(min_row=2, max_row=len(DAYS)+1):
         ws.row_dimensions[row[0].row].height = 40
+    # Freeze header row so time headers stay visible
+    try:
+        ws.freeze_panes = 'A2'
+    except Exception:
+        pass
+    # Give the sheet a light tab color to look nicer in Excel
+    try:
+        ws.sheet_properties.tabColor = "E3F2FD"
+    except Exception:
+        pass
     
     # Add self-study courses section
     current_row = len(DAYS) + 4
@@ -1502,8 +1585,8 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
         
         current_row += 2
     
-    # Add legend
-    legend_title = ws.cell(row=current_row, column=1, value="Legend")
+    # Add Course Details
+    legend_title = ws.cell(row=current_row, column=1, value="Course Details")
     legend_title.font = Font(bold=True, size=12)
     current_row += 2
     
@@ -1514,7 +1597,7 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
     ws.column_dimensions['E'].width = 15
     ws.column_dimensions['F'].width = 15
     
-    legend_headers = ['Subject Code', 'Color', 'Subject Name', 'Faculty', 'LTPS', 'Room']
+    legend_headers = ['Course Code', 'Color', 'Name of the Course', 'Course Co-ordinator', 'LTPSC', 'Room Number']
     for col, header in enumerate(legend_headers, 1):
         cell = ws.cell(row=current_row, column=col, value=header)
         cell.font = Font(bold=True)
@@ -1550,7 +1633,8 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
                 t = str(int(course_row['T'])) if pd.notna(course_row['T']) else "0"
                 p = str(int(course_row['P'])) if pd.notna(course_row['P']) else "0"
                 s = str(int(course_row['S'])) if pd.notna(course_row['S']) and 'S' in course_row else "0"
-                ltps_value = f"{l}-{t}-{p}-{s}"
+                c = str(int(course_row['C'])) if pd.notna(course_row['C']) else "0"
+                ltps_value = f"{l}-{t}-{p}-{s}-{c}"
                 course_name = str(course_row['Course Name'])
                 fac_name = course_faculty_map.get(code, '')
                 break
@@ -1574,19 +1658,83 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
         current_row += 1
 
 def format_overview_sheet(overview, row_index):
-    """Format overview sheet"""
-    for col in range(1, 4):
-        overview.column_dimensions[get_column_letter(col)].width = 20
-    
-    for row_ in overview.iter_rows(min_row=1, max_row=4):
-        for cell in row_:
-            cell.font = Font(bold=True)
-    
+    """Format overview sheet with improved visual styling."""
+    # Merge title and date rows for a cleaner header
+    try:
+        overview.merge_cells('A1:C1')
+    except Exception:
+        pass
+    try:
+        overview.merge_cells('A2:C2')
+    except Exception:
+        pass
+
+    # Title styling (row 1)
+    title_cell = overview.cell(row=1, column=1)
+    title_cell.font = Font(bold=True, size=14, color='0B3954')
+    title_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Date/info styling (row 2)
+    date_cell = overview.cell(row=2, column=1)
+    date_cell.font = Font(italic=True, size=10, color='333333')
+    date_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Column widths
+    overview.column_dimensions[get_column_letter(1)].width = 30
+    overview.column_dimensions[get_column_letter(2)].width = 12
+    overview.column_dimensions[get_column_letter(3)].width = 30
+
+    # Header row (row 4) styling
+    header_fill = PatternFill(start_color="1976D2", end_color="1976D2", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    header_alignment = Alignment(horizontal='center', vertical='center')
+    header_border = Border(left=Side(style='thin'), right=Side(style='thin'),
+                           top=Side(style='thin'), bottom=Side(style='thin'))
+
     for cell in overview[4]:
-        cell.fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-        cell.font = Font(bold=True)
-        cell.border = Border(left=Side(style='thin'), right=Side(style='thin'),
-                            top=Side(style='thin'), bottom=Side(style='thin'))
+        try:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+            cell.border = header_border
+        except Exception:
+            pass
+
+    # Apply alternating row fills and borders for table body
+    alt_fill = PatternFill(start_color="F7F9FC", end_color="F7F9FC", fill_type="solid")
+    body_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    start_row = 5
+    end_row = max(start_row, row_index - 1)
+    for r in range(start_row, end_row + 1):
+        row_fill = alt_fill if (r % 2 == 0) else None
+        for c in range(1, 4):
+            cell = overview.cell(row=r, column=c)
+            if row_fill:
+                try:
+                    cell.fill = row_fill
+                except Exception:
+                    pass
+            try:
+                cell.border = body_border
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+            except Exception:
+                pass
+
+    # Enable autofilter for the table and freeze panes so header stays visible
+    try:
+        overview.auto_filter.ref = f"A4:C{max(4, row_index-1)}"
+    except Exception:
+        pass
+    try:
+        overview.freeze_panes = 'A5'
+    except Exception:
+        pass
+
+    # Give the overview sheet a subtle tab color
+    try:
+        overview.sheet_properties.tabColor = "1976D2"
+    except Exception:
+        pass
 
 # ---------------------------
 # Teacher and unscheduled workbooks
@@ -1724,8 +1872,9 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
     if "Sheet" in twb.sheetnames:
         twb.remove(twb["Sheet"])
     
-    header_fill = PatternFill(start_color="FFD700", end_color="FFD700", fill_type="solid")
-    alt_fill = PatternFill(start_color="FFF8DC", end_color="FFF8DC", fill_type="solid")
+    # Softer header and alternate fills for teacher sheets
+    header_fill = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
+    alt_fill = PatternFill(start_color="FBFCFD", end_color="FBFCFD", fill_type="solid")
     border = Border(left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin"))
     header_font = Font(bold=True, size=12)
     title_font = Font(bold=True, size=14)
@@ -1818,191 +1967,6 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
 # ---------------------------
 # Exam generator
 # ---------------------------
-def exam_generator():
-    """Generate exam timetable with room allocation and invigilation"""
-    exam_file = "Exam_timetable.xlsx"
-    
-    try:
-        df_courses = pd.read_csv(os.path.join(INPUT_DIR, "combined.csv"))
-        df_rooms = pd.read_csv(os.path.join(INPUT_DIR, "rooms.csv"))
-    except FileNotFoundError as e:
-        print(f"❌ Missing file: {e}")
-        return None
-    
-    df_courses = df_courses.dropna(subset=["Course Code", "Course Name", "Faculty", "Department", "Semester"])
-    if "total_students" not in df_courses.columns:
-        df_courses["total_students"] = 50
-    df_courses["total_students"] = df_courses["total_students"].fillna(50).astype(int)
-    
-    df_rooms.columns = [c.strip().lower() for c in df_rooms.columns]
-    
-    def find_col(keywords):
-        for c in df_rooms.columns:
-            if any(k in c for k in keywords):
-                return c
-        return None
-    
-    room_col = find_col(["room", "num", "id"])
-    cap_col = find_col(["cap", "seat"])
-    type_col = find_col(["type"])
-    
-    if not room_col or not cap_col:
-        print("❌ rooms.csv must have columns for room number and capacity.")
-        return None
-    
-    df_rooms = df_rooms.rename(columns={room_col: "room", cap_col: "capacity"})
-    if type_col:
-        df_rooms = df_rooms.rename(columns={type_col: "type"})
-    else:
-        df_rooms["type"] = "LECTURE_ROOM"
-    
-    df_rooms["room"] = df_rooms["room"].astype(str).str.strip()
-    df_rooms["capacity"] = pd.to_numeric(df_rooms["capacity"], errors="coerce").fillna(0).astype(int)
-    df_rooms = df_rooms[df_rooms["capacity"] > 0].sort_values(by="capacity").reset_index(drop=True)
-    
-    print(f"✅ Loaded {len(df_rooms)} rooms for exam scheduling")
-    
-    faculty_list = list(set(sum([str(f).replace(" and ", "/").replace(",", "/").split("/") for f in df_courses["Faculty"]], [])))
-    faculty_list = [f.strip() for f in faculty_list if f.strip()]
-    
-    session_title = "Jan-April 03:00 PM to 04:30 PM"
-    start_date = datetime(2025, 11, 20)
-    num_days = min(10, len(df_courses))
-    dates = [start_date + timedelta(days=i) for i in range(num_days)]
-    days = [d.strftime("%A") for d in dates]
-    
-    shuffled = df_courses.sample(frac=1, random_state=42).reset_index(drop=True)
-    course_date_map = {row["Course Code"]: dates[i % len(dates)] for i, row in shuffled.iterrows()}
-    
-    date_room_usage = {d.strftime("%d-%b-%Y"): set() for d in dates}
-    invigilation_entries = []
-    
-    for date in dates:
-        date_str = date.strftime("%d-%b-%Y")
-        today_courses = shuffled[shuffled["Course Code"].isin(
-            [c for c, dt in course_date_map.items() if dt == date]
-        )]
-        
-        for _, course in today_courses.iterrows():
-            code = course["Course Code"]
-            name = course["Course Name"]
-            dept = course["Department"]
-            sem = course["Semester"]
-            teacher = str(course["Faculty"]).strip()
-            students = int(course["total_students"])
-            time_slot = "03:00 PM—04:30 PM"
-            
-            assigned_rooms = []
-            remaining = students
-            
-            available = df_rooms[~df_rooms["room"].isin(date_room_usage[date_str])].copy()
-            available = available.sort_values(by="capacity", ascending=True)
-            
-            suitable = available[available["capacity"] >= remaining]
-            if not suitable.empty:
-                best = suitable.iloc[0]
-                assigned_rooms = [best["room"]]
-                date_room_usage[date_str].add(best["room"])
-            else:
-                total_cap = 0
-                for _, room_row in available.iterrows():
-                    assigned_rooms.append(room_row["room"])
-                    total_cap += room_row["capacity"]
-                    date_room_usage[date_str].add(room_row["room"])
-                    if total_cap >= remaining:
-                        break
-                if total_cap < remaining:
-                    print(f"⚠️ Not enough capacity for {code}")
-            
-            available_teachers = [f for f in faculty_list if f.lower() not in teacher.lower()]
-            for room in assigned_rooms:
-                invigilator = random.choice(available_teachers) if available_teachers else "TBD"
-                invigilation_entries.append({
-                    "Faculty": invigilator,
-                    "Date": date_str,
-                    "Time": time_slot,
-                    "Course Code": code,
-                    "Course Name": name,
-                    "Department": dept,
-                    "Semester": sem,
-                    "Room": room,
-                    "Strength": students
-                })
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Exam Timetable"
-    
-    bold_center = Font(bold=True)
-    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    header_fill = PatternFill(start_color="BFBFBF", end_color="BFBFBF", fill_type="solid")
-    border = Border(left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin"))
-    
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(dates)+1)
-    title = ws.cell(row=1, column=1, value=session_title)
-    title.font = Font(bold=True, size=14)
-    title.alignment = center
-    title.fill = header_fill
-    title.border = border
-    
-    ws.cell(row=2, column=1, value="Date").font = bold_center
-    for i, d in enumerate(dates):
-        c = ws.cell(row=2, column=i+2, value=d.strftime("%d-%b-%Y"))
-        c.font = bold_center
-        c.alignment = center
-        c.fill = header_fill
-        c.border = border
-    
-    ws.cell(row=3, column=1, value="Days").font = bold_center
-    for i, day in enumerate(days):
-        c = ws.cell(row=3, column=i+2, value=day)
-        c.font = bold_center
-        c.alignment = center
-        c.fill = header_fill
-        c.border = border
-    
-    grouped_by_date = {}
-    for e in invigilation_entries:
-        grouped_by_date.setdefault(e["Date"], set()).add(e["Course Code"])
-    max_rows = max(len(v) for v in grouped_by_date.values()) if grouped_by_date else 0
-    
-    for r in range(max_rows):
-        for i, d in enumerate(dates):
-            code_list = list(grouped_by_date.get(d.strftime("%d-%b-%Y"), []))
-            val = code_list[r] if r < len(code_list) else ""
-            cell = ws.cell(row=r+4, column=i+2, value=val)
-            cell.alignment = center
-            cell.border = border
-    
-    ws.column_dimensions["A"].width = 15
-    for col in range(2, len(dates)+2):
-        ws.column_dimensions[get_column_letter(col)].width = 16
-    
-    ws2 = wb.create_sheet("Exam Invigilation Schedule")
-    headers = ["Faculty", "Date", "Time", "Course Code", "Course Name", "Department", "Semester", "Room", "Strength"]
-    ws2.append(headers)
-    
-    for i, h in enumerate(headers, 1):
-        cell = ws2.cell(row=1, column=i, value=h)
-        cell.font = bold_center
-        cell.alignment = center
-        cell.fill = header_fill
-        cell.border = border
-    
-    for entry in invigilation_entries:
-        ws2.append([entry[h] for h in headers])
-    
-    for col in range(1, len(headers)+1):
-        ws2.column_dimensions[get_column_letter(col)].width = 22
-    for r in range(2, ws2.max_row+1):
-        for c in ws2[r]:
-            c.alignment = center
-            c.border = border
-    
-    exam_file = os.path.join(OUTPUT_DIR, "Exam_timetable.xlsx")
-    wb.save(exam_file)
-    print(f"✅ Exam timetable saved → {exam_file}")
-    return exam_file
 
 # ---------------------------
 # Main execution
@@ -2014,7 +1978,7 @@ if __name__ == "__main__":
         print("="*80)
         print("\n🔧 Configuration:")
         print(f"    - No morning break (removed 10:30-10:45)")
-        print(f"    - Lunch break: 13:00-14:00 (extended)")
+        print(f"    - Lunch break: 13:15-14:00 (extended)")
         print(f"    - Lecture duration: {LECTURE_MIN} minutes")
         print(f"    - Tutorial duration: {TUTORIAL_MIN} minutes")
         print(f"    - Lab duration: {LAB_MIN} minutes")
@@ -2022,7 +1986,7 @@ if __name__ == "__main__":
         print("="*80 + "\n")
         
         generate_all_timetables()
-        exam_generator()
+        
         
         print("\n" + "="*80)
         print("✅ TIMETABLE GENERATION COMPLETE!")
@@ -2031,7 +1995,6 @@ if __name__ == "__main__":
         print("    1. timetable_all_departments.xlsx - Main timetable")
         print("    2. teacher_timetables.xlsx - Faculty schedules")
         print("    3. unscheduled_courses.xlsx - Courses that couldn't be scheduled")
-        print("    4. Exam_timetable.xlsx - Exam schedule")
         print("\n💡 Tips:")
         print("    - Check unscheduled_courses.xlsx to see which courses failed")
         print("    - If many courses are unscheduled, consider:")
