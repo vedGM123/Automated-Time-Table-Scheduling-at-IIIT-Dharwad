@@ -16,11 +16,11 @@ CSE,1,B1-HS156,Holistic Personality Development,3,0,0,0,2,Dr. Rajesh NS,Yes,70
 CSE,1,B2-CS151,Introduction to CyberSecurity,3,1,0,0,2,Dr. Girish Revadigar,No,120
 CSE,3,MA261,Differential Equation,3,1,0,0,2,Dr. Anand B,Yes,170
 CSE,3,MA262,Multivariate Calculus,3,1,0,0,2,Dr. Somen B,No,170
-CSE,3,CS261,Operating Systems,3,0,0,4,2,Dr. Suvadip H,Yes,85
+CSE,3,CS261,Operating Systems,3,0,0,4,2,Dr. Suvadip H/Dr. Suvadip H,Yes,85
 CSE,3,CS262,Software Desgin Tools and Techniques,3,0,2,0,3,Dr. Vivekraj,Yes,85
 CSE,3,CS263,Design and Analysis of Algorithm,3,0,2,0,4,Dr. Pramod Y,Yes,85
-CSE,3,CS264,Computer Networks,3,1,0,0,4,Dr. Prabhu Prasad,Yes,85
-CSE,3,HS261,Ethics,3,1,0,0,2,Dr. Ashwath Babu,Yes,170
+CSE,3,CS264,Computer Networks,3,1,0,0,4,Dr. Prabhu Prasad/ Dr. Prabhu Prasad,Yes,85
+CSE,3,HS261,Ethics,3,1,0,0,2,Dr. Ashwath Babu,No,170
 CSE,3,B1-EC251,Electronics System Design-1,3,1,0,0,2,Dr. Pankaj Kumar,Yes,80
 CSE,3,B1-EC252,Introduction RFID Design,3,1,0,0,2,D. Rajesh Kumar,Yes,80
 CSE,3,B1-NEW,Electronics System Engineering,3,1,0,0,2,Dr. Mallikarjun ,Yes,80
@@ -40,7 +40,6 @@ CSE,5,B2-DS359,Full stack Development,3,1,0,0,4,Dr. Manjuth KV,Yes,70
 CSE,5,B2-EC355,Internet of Things,3,1,0,0,4,Dr. Prakash Pawar,Yes,70
 CSE,5,B2-EC364,Semiconductor Device Modelling,3,1,0,0,4,Dr. Pankaj Kumar,Yes,70
 CSE,5,B2-CS352,Cryptography and information security,3,1,0,0,4,Dr. Rajendra H,Yes,70
-CSE,5,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,200
 CSE,5,B2-EC365,AI in biomedical signal interpretation,3,1,0,0,4,Dr. Sibasankar Padhy,Yes,70
 CSE,7,B1-DS456,CyberSecurity Techniques,3,1,0,0,4,Dr. Rajendra H,Yes,110
 CSE,7,B1-EC456,Reinforcement Learning,3,1,0,0,4,Dr. Dibyajyothi Guha,Yes,70
@@ -103,7 +102,6 @@ DSAI,5,B2-DS359,Full stack Development,3,1,0,0,4,Dr. Manjuth KV,Yes,70
 DSAI,5,B2-EC355,Internet of Things,3,1,0,0,4,Dr. Prakash Pawar,Yes,70
 DSAI,5,B2-EC364,Semiconductor Device Modelling,3,1,0,0,4,Dr. Pankaj Kumar,Yes,70
 DSAI,5,B2-CS352,Cryptography and information security,3,1,0,0,4,Dr. Rajendra H,Yes,70
-DSAI,5,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,200
 DSAI,5,B2-EC365,AI in biomedical signal interpretation,3,1,0,0,4,Dr. Sibasankar Padhy,Yes,70
 DSAI,7,B1-DS456,CyberSecurity Techniques,3,1,0,0,4,Dr. Rajendra H,Yes,110
 DSAI,7,B1-EC456,Reinforcement Learning,3,1,0,0,4,Dr. Dibyajyothi Guha,Yes,70
@@ -137,20 +135,20 @@ ECE,1,B1-NEW,Basics of design,3,1,0,0,2,Dr. Sandesh P,Yes,70
 ECE,1,B1-HS156,Holistic Personality Development,3,0,0,0,2,Dr. Rajesh NS,Yes,70
 ECE,1,B2-CS151,Introduction to CyberSecurity,3,1,0,0,2,Dr. Girish Revadigar,No,120
 ECE,3,MA261,Multivariable Calculus,3,1,0,0,2,Dr. Somen B,Yes,170
-ECE,3,MA262,Differential Equations,3,1,0,0,2,Dr. Anand B,Yes,170
+ECE,3,MA262,Differential Equations,3,1,0,0,2,Dr. Anand B,No,170
 ECE,3,MA263,Random Process,3,1,0,0,2,Dr. Chinmayananda,Yes,66
 ECE,3,CS307,Machine Learning,3,1,0,0,4,Dr. Deepak K.T,Yes,66
 ECE,3,EC261,Signal & Systems,2,1,0,0,3,Dr. Somen B,Yes,66
 ECE,3,EC262,Semiconductor Devices,3,0,2,0,2,Dr. Pankaj Kumar,Yes,66
-ECE,3,EC263,Analog Electronics Circuits,3,0,2,0,2,Dr. Rajesh Kumar,Yes,66
+ECE,3,EC263,Analog Electronics Circuits,3,0,2,0,2,Dr. Rajesh Kumar,No,66
 ECE,3,NEW,HSS/IE ,3,0,0,0,3,TBD,Yes,66
 ECE,3,B1-EC251,Electronics System Design-1,3,1,0,0,2,Dr. Pankaj Kumar,Yes,80
 ECE,3,B1-EC252,Introduction RFID Design,3,1,0,0,2,D. Rajesh Kumar,Yes,80
 ECE,3,B1-NEW,Electronics System Engineering,3,1,0,0,2,Dr. Mallikarjun ,Yes,80
 ECE,3,B1-CS152,Data Science with Python,3,1,0,0,2,Dr. Abdul Wahid,Yes,50
 ECE,3,B1-CS251,2D Computer Graphics,3,1,0,0,2,Dr. Vivekraj,Yes,30
-ECE,3,B2-NEW,Introduction to Embedded Signals Inteligence,3,1,0,0,2,Dr. Sibasankar Padhy,Yes,80
-ECE,3,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,170
+ECE,3,B2-NEW,Introduction to Embedded Signals Inteligence,3,1,0,0,2,Dr. Sibasankar Padhy,No,80
+ECE,3,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,No,170
 ECE,5,EC306,Digital Signal Processing,3,0,2,0,4,Dr. Sibasankar Padhy,Yes,80
 ECE,5,EC301,Introduction to VLSI Design,3,1,0,0,4,Dr. Jagdish D.N,Yes,80
 ECE,5,EC351,Introduction to Algorithms,3,1,0,0,4,Dr. Jagdish R.B,Yes,80
@@ -163,7 +161,6 @@ ECE,5,B2-DS359,Full stack Development,3,1,0,0,4,Dr. Manjuth KV,Yes,70
 ECE,5,B2-EC355,Internet of Things,3,1,0,0,4,Dr. Prakash Pawar,Yes,70
 ECE,5,B2-EC364,Semiconductor Device Modelling,3,1,0,0,4,Dr. Pankaj Kumar,Yes,70
 ECE,5,B2-CS352,Cryptography and information security,3,1,0,0,4,Dr. Rajendra H,Yes,70
-ECE,5,B2-ASD352,User Interaction and Experience Design,3,1,0,0,4,Dr. Sandesh P,Yes,200
 ECE,5,B2-EC365,AI in biomedical signal interpretation,3,1,0,0,4,Dr. Sibasankar Padhy,Yes,70
 ECE,7,B1-DS456,CyberSecurity Techniques,3,1,0,0,4,Dr. Rajendra H,Yes,110
 ECE,7,B1-EC456,Reinforcement Learning,3,1,0,0,4,Dr. Dibyajyothi Guha,Yes,70
