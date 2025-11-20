@@ -1,12 +1,3 @@
-# TT_gen.py -- Complete Fixed Timetable Generator
-# Fixes applied:
-# 1. Removed 10:30-10:45 break
-# 2. Changed lunch break to 13:15-14:00
-# 3. Better time slot generation
-# 4. Fixed elective basket scheduling
-# 5. Supports increased lab capacity (80 students)
-# 6. *** NEW: Added room capacity check against student strength ***
-
 import pandas as pd
 import random
 from datetime import datetime, time, timedelta
@@ -1964,9 +1955,6 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
     uwb.save(os.path.join(OUTPUT_DIR, "unscheduled_courses.xlsx"))
     print(f"✅ Saved unscheduled_courses.xlsx with {len(unscheduled_unique)} courses")
 
-# ---------------------------
-# Exam generator
-# ---------------------------
 
 # ---------------------------
 # Main execution
