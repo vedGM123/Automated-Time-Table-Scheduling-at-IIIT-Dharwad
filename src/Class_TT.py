@@ -307,9 +307,12 @@ def find_suitable_room_for_slot(course_code, room_type, day, slot_indices, room_
     if mapping_key in course_room_mapping:
         fixed_room = course_room_mapping[mapping_key]
         # We found a pre-assigned room for this course.
-        # Return it immediately. This allows multiple departments
-        # to be mapped to the same room for the same course.
-        return fixed_room
+        # Use it only if it's actually free for these slot indices.
+        if fixed_room not in room_schedule:
+            room_schedule[fixed_room] = {d: set() for d in range(len(DAYS))}
+        if all(si not in room_schedule[fixed_room][day] for si in slot_indices):
+            return fixed_room
+        # Room is occupied; fall through to find another suitable room.
     
     # If no room is mapped, find a new one...
     
@@ -454,9 +457,11 @@ def find_consecutive_slots_for_minutes(timetable, day, start_idx, required_minut
         
         slot_indices.append(i)
         accumulated += slot_minutes(TIME_SLOTS[i])
+        if accumulated > required_minutes:
+            return None, None
         i += 1
     
-    if accumulated >= required_minutes:
+    if accumulated == required_minutes:
         # *** MODIFIED: Pass the *full code* for C004 check ***
         # For non-elective core courses, course_code is the base_code (e.g., "MA161-CSE")
         # For electives, this will be the full code (e.g., "B1-PHD151")
@@ -524,6 +529,299 @@ def load_batch_data():
         batch_info[(dept, sem)] = {'num_sections': 1}
     return batch_info
 
+def normalize_section_info(courses_df):
+    df_local = courses_df.copy()
+    if 'Section' not in df_local.columns:
+        df_local['Section'] = ''
+    if 'SectionMode' not in df_local.columns:
+        df_local['SectionMode'] = ''
+    df_local['Section'] = df_local['Section'].fillna('').astype(str).str.strip()
+    df_local['SectionMode'] = df_local['SectionMode'].fillna('').astype(str).str.strip()
+    return df_local
+
+def normalize_crossdept_info(courses_df):
+    df_local = courses_df.copy()
+    if 'CrossDeptGroup' not in df_local.columns:
+        df_local['CrossDeptGroup'] = ''
+    if 'CrossDeptMode' not in df_local.columns:
+        df_local['CrossDeptMode'] = ''
+    df_local['CrossDeptGroup'] = df_local['CrossDeptGroup'].fillna('').astype(str).str.strip()
+    df_local['CrossDeptMode'] = df_local['CrossDeptMode'].fillna('').astype(str).str.strip()
+    return df_local
+
+def filter_courses_for_section(courses_df, section_label):
+    if not section_label:
+        return courses_df
+    sec = courses_df['Section'].fillna('').astype(str).str.strip().str.upper()
+    mode = courses_df['SectionMode'].fillna('').astype(str).str.strip().str.upper()
+    mode = mode.where(mode != '', 'COMBINED')
+    sec = sec.where(sec != '', 'ALL')
+    combined_mask = (mode == 'COMBINED') & (sec.isin(['ALL', section_label]))
+    split_mask = (mode == 'SPLIT') & (sec == section_label)
+    other_mask = (~mode.isin(['COMBINED', 'SPLIT'])) & (sec.isin(['ALL', section_label]))
+    return courses_df[combined_mask | split_mask | other_mask]
+
+def get_combined_courses_all_sections(courses_df):
+    sec = courses_df['Section'].fillna('').astype(str).str.strip().str.upper()
+    mode = courses_df['SectionMode'].fillna('').astype(str).str.strip().str.upper()
+    mode = mode.where(mode != '', 'COMBINED')
+    sec = sec.where(sec != '', 'ALL')
+    return courses_df[(mode == 'COMBINED') & (sec.isin(['ALL']))]
+
+def get_crossdept_groups(courses_df):
+    group = courses_df['CrossDeptGroup'].fillna('').astype(str).str.strip()
+    mode = courses_df['CrossDeptMode'].fillna('').astype(str).str.strip().str.upper()
+    valid = (group != '') & (mode == 'COMBINED')
+    groups = {}
+    for g in group[valid].unique():
+        groups[g] = courses_df[group == g]
+    return groups
+
+def place_course_on_slots(course_row, timetable, day, slot_indices, comp_type,
+                          professor_schedule, room_schedule, course_room_mapping,
+                          course_day_components, room_override=None, skip_prof_check=False):
+    code = str(course_row.get('Course Code', '')).strip()
+    if not code:
+        return False
+    base_code = get_base_course_code(code)
+    name = str(course_row.get('Course Name', '')).strip()
+    faculty = select_faculty(course_row.get('Faculty', 'TBD'))
+    student_strength = int(course_row.get('total_students', 50))
+
+    if not skip_prof_check:
+        if not check_professor_availability(professor_schedule, faculty, day, slot_indices[0], len(slot_indices)):
+            return False
+    if any(timetable[day][si]['type'] is not None for si in slot_indices):
+        return False
+
+    room_type = get_required_room_type(comp_type)
+    candidate_room = room_override or find_suitable_room_for_slot(
+        code, room_type, day, slot_indices, room_schedule, course_room_mapping, comp_type, student_strength
+    )
+    if candidate_room is None:
+        return False
+
+    if faculty not in professor_schedule:
+        professor_schedule[faculty] = {d: set() for d in range(len(DAYS))}
+    if base_code not in course_day_components:
+        course_day_components[base_code] = {}
+
+    for si_idx, si in enumerate(slot_indices):
+        timetable[day][si]['type'] = comp_type
+        timetable[day][si]['code'] = code if si_idx == 0 else ''
+        timetable[day][si]['name'] = name if si_idx == 0 else ''
+        timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
+        timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
+        professor_schedule[faculty][day].add(si)
+        if candidate_room not in room_schedule:
+            room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
+        room_schedule[candidate_room][day].add(si)
+
+    if day not in course_day_components[base_code]:
+        course_day_components[base_code][day] = []
+    course_day_components[base_code][day].append(comp_type)
+
+    return True
+
+def schedule_crossdept_group(timetable, group_courses, semester, professor_schedule,
+                             room_schedule, course_room_mapping, course_day_components,
+                             unscheduled_components, department):
+    if group_courses is None or len(group_courses) == 0:
+        return []
+    rep_course = group_courses.iloc[0]
+    code = str(rep_course.get('Course Code', '')).strip()
+    base_code = get_base_course_code(code)
+    faculty = select_faculty(rep_course.get('Faculty', 'TBD'))
+    student_strength = int(rep_course.get('total_students', 50))
+
+    if faculty not in professor_schedule:
+        professor_schedule[faculty] = {d: set() for d in range(len(DAYS))}
+    if base_code not in course_day_components:
+        course_day_components[base_code] = {}
+
+    lec_count, tut_count, lab_count, _ = calculate_required_minutes(rep_course)
+    lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+    tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
+    lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
+
+    schedule_entries = []
+
+    def schedule_component(required_minutes, comp_type):
+        room_type = get_required_room_type(comp_type)
+        for attempt in range(5000):
+            day = random.randint(0, len(DAYS)-1)
+            starts = get_all_possible_start_indices()
+            for start_idx in starts:
+                slot_indices, candidate_room = find_consecutive_slots_for_minutes(
+                    timetable, day, start_idx, required_minutes, semester,
+                    professor_schedule, faculty, room_schedule, room_type,
+                    base_code, course_room_mapping, comp_type, course_day_components,
+                    student_strength
+                )
+                if slot_indices is None or candidate_room is None:
+                    continue
+                if not check_professor_availability(professor_schedule, faculty, day, slot_indices[0], len(slot_indices)):
+                    continue
+                # place representative course with the chosen room
+                if not place_course_on_slots(
+                    rep_course, timetable, day, slot_indices, comp_type,
+                    professor_schedule, room_schedule, course_room_mapping,
+                    course_day_components, room_override=candidate_room
+                ):
+                    continue
+                # place any additional rows for this dept in the same group
+                if len(group_courses) > 1:
+                    for _, row in group_courses.iterrows():
+                        if row is rep_course:
+                            continue
+                        place_course_on_slots(
+                            row, timetable, day, slot_indices, comp_type,
+                            professor_schedule, room_schedule, course_room_mapping,
+                            course_day_components, skip_prof_check=True
+                        )
+                schedule_entries.append({
+                    'day': day,
+                    'slot_indices': list(slot_indices),
+                    'comp_type': comp_type
+                })
+                return True
+        return False
+
+    for _ in range(lec_sessions_needed):
+        if not schedule_component(LECTURE_MIN, 'LEC'):
+            add_unscheduled_course(unscheduled_components, department, semester, code, str(rep_course.get('Course Name', '')).strip(), faculty, 'LEC', 0, "Could not place cross-dept LEC")
+    for _ in range(tut_sessions_needed):
+        if not schedule_component(TUTORIAL_MIN, 'TUT'):
+            add_unscheduled_course(unscheduled_components, department, semester, code, str(rep_course.get('Course Name', '')).strip(), faculty, 'TUT', 0, "Could not place cross-dept TUT")
+    for _ in range(lab_sessions_needed):
+        if not schedule_component(LAB_MIN, 'LAB'):
+            add_unscheduled_course(unscheduled_components, department, semester, code, str(rep_course.get('Course Name', '')).strip(), faculty, 'LAB', 0, "Could not place cross-dept LAB")
+
+    return schedule_entries
+
+def apply_crossdept_schedule(timetable, group_courses, schedule_entries, professor_schedule,
+                             room_schedule, course_room_mapping, course_day_components):
+    if not schedule_entries:
+        return
+    for _, row in group_courses.iterrows():
+        for entry in schedule_entries:
+            place_course_on_slots(
+                row, timetable, entry['day'], entry['slot_indices'], entry['comp_type'],
+                professor_schedule, room_schedule, course_room_mapping, course_day_components,
+                skip_prof_check=True
+            )
+
+def schedule_combined_courses(timetable, combined_courses, semester, professor_schedule,
+                              room_schedule, course_room_mapping, course_day_components,
+                              unscheduled_components, department):
+    combined_schedule = []
+    for _, course in combined_courses.iterrows():
+        code = str(course.get('Course Code', '')).strip()
+        if not code:
+            continue
+        base_code = get_base_course_code(code)
+        name = str(course.get('Course Name', '')).strip()
+        faculty = select_faculty(course.get('Faculty', 'TBD'))
+        student_strength = int(course.get('total_students', 50))
+
+        if faculty not in professor_schedule:
+            professor_schedule[faculty] = {d: set() for d in range(len(DAYS))}
+        if base_code not in course_day_components:
+            course_day_components[base_code] = {}
+
+        lec_count, tut_count, lab_count, _ = calculate_required_minutes(course)
+        lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+        tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
+        lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
+
+        def schedule_component(required_minutes, comp_type):
+            room_type = get_required_room_type(comp_type)
+            for attempt in range(5000):
+                day = random.randint(0, len(DAYS)-1)
+                starts = get_all_possible_start_indices()
+                for start_idx in starts:
+                    slot_indices, candidate_room = find_consecutive_slots_for_minutes(
+                        timetable, day, start_idx, required_minutes, semester,
+                        professor_schedule, faculty, room_schedule, room_type,
+                        base_code, course_room_mapping, comp_type, course_day_components,
+                        student_strength
+                    )
+                    if slot_indices is None or candidate_room is None:
+                        continue
+                    if not check_professor_availability(professor_schedule, faculty, day, slot_indices[0], len(slot_indices)):
+                        continue
+
+                    for si_idx, si in enumerate(slot_indices):
+                        timetable[day][si]['type'] = comp_type
+                        timetable[day][si]['code'] = code if si_idx == 0 else ''
+                        timetable[day][si]['name'] = name if si_idx == 0 else ''
+                        timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
+                        timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
+                        professor_schedule[faculty][day].add(si)
+                        if candidate_room not in room_schedule:
+                            room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
+                        room_schedule[candidate_room][day].add(si)
+
+                    if day not in course_day_components[base_code]:
+                        course_day_components[base_code][day] = []
+                    course_day_components[base_code][day].append(comp_type)
+
+                    combined_schedule.append({
+                        'code': code,
+                        'name': name,
+                        'faculty': faculty,
+                        'comp_type': comp_type,
+                        'day': day,
+                        'slot_indices': list(slot_indices),
+                        'room': candidate_room,
+                        'base_code': base_code
+                    })
+                    return True
+            return False
+
+        for _ in range(lec_sessions_needed):
+            if not schedule_component(LECTURE_MIN, 'LEC'):
+                add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'LEC', 0, "Could not place combined LEC")
+        for _ in range(tut_sessions_needed):
+            if not schedule_component(TUTORIAL_MIN, 'TUT'):
+                add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'TUT', 0, "Could not place combined TUT")
+        for _ in range(lab_sessions_needed):
+            if not schedule_component(LAB_MIN, 'LAB'):
+                add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'LAB', 0, "Could not place combined LAB")
+
+    return combined_schedule
+
+def apply_combined_schedule(timetable, combined_schedule, professor_schedule, room_schedule, course_day_components):
+    for entry in combined_schedule:
+        day = entry['day']
+        slot_indices = entry['slot_indices']
+        comp_type = entry['comp_type']
+        code = entry['code']
+        name = entry['name']
+        faculty = entry['faculty']
+        room = entry['room']
+        base_code = entry['base_code']
+
+        if faculty not in professor_schedule:
+            professor_schedule[faculty] = {d: set() for d in range(len(DAYS))}
+        if base_code not in course_day_components:
+            course_day_components[base_code] = {}
+
+        for si_idx, si in enumerate(slot_indices):
+            timetable[day][si]['type'] = comp_type
+            timetable[day][si]['code'] = code if si_idx == 0 else ''
+            timetable[day][si]['name'] = name if si_idx == 0 else ''
+            timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
+            timetable[day][si]['classroom'] = room if si_idx == 0 else ''
+            professor_schedule[faculty][day].add(si)
+            if room not in room_schedule:
+                room_schedule[room] = {d: set() for d in range(len(DAYS))}
+            room_schedule[room][day].add(si)
+
+        if day not in course_day_components[base_code]:
+            course_day_components[base_code][day] = []
+        course_day_components[base_code][day].append(comp_type)
+
 # ---------------------------
 # Global elective basket scheduling
 # ---------------------------
@@ -561,6 +859,8 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
             basket_groups[key].append(course)
     
     global_schedule = {}
+    # Track lecture/lab slots per semester to prevent consecutive LEC/LAB across baskets
+    global_semester_adj = {}
     
     for (semester, basket_name), basket_courses in sorted(basket_groups.items()):
         print(f"\n📚 Semester {semester}, Basket {basket_name}: {len(basket_courses)} courses")
@@ -578,6 +878,11 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
         lab_sessions = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
         
         basket_schedule = []
+        if semester not in global_semester_adj:
+            global_semester_adj[semester] = {
+                'LEC': {d: set() for d in range(len(DAYS))},
+                'LAB': {d: set() for d in range(len(DAYS))}
+            }
         
         # Schedule lectures
         for session_num in range(lec_sessions):
@@ -589,9 +894,9 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                 conflict = False
                 for prev_day, prev_slots, prev_type in basket_schedule:
                     if prev_day == day and prev_type in ['LEC', 'TUT']:
-                        if any(s in prev_slots for s in range(start_idx, start_idx + 2)):
-                            conflict = True
-                            break
+                        # Do not allow multiple LEC/TUT on the same day for a basket
+                        conflict = True
+                        break
                 
                 if conflict:
                     continue
@@ -607,18 +912,31 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                     
                     slot_indices.append(i)
                     accumulated += slot_minutes(TIME_SLOTS[i])
-                    
-                    if accumulated >= LECTURE_MIN:
+                    if accumulated == LECTURE_MIN:
+                        break
+                    if accumulated > LECTURE_MIN:
+                        valid = False
                         break
                 
+                # Prevent consecutive lectures across baskets for the same semester
+                lec_slots = global_semester_adj[semester]['LEC'][day]
+                adj_conflict = False
+                for si in slot_indices:
+                    if si in lec_slots or (si - 1) in lec_slots or (si + 1) in lec_slots:
+                        adj_conflict = True
+                        break
+                if adj_conflict:
+                    continue
+
                 # *** MODIFIED: Check only against the current basket type's global slots ***
-                if valid and accumulated >= LECTURE_MIN and len(slot_indices) > 0:
+                if valid and accumulated == LECTURE_MIN and len(slot_indices) > 0:
                     if any(s in current_basket_global_slots[day] for s in slot_indices):
                         continue # Slot already taken by another 'B1' course, try again
                     
                     # This slot is free. Book it.
                     basket_schedule.append((day, slot_indices, 'LEC'))
                     current_basket_global_slots[day].update(slot_indices) # Add to 'B1' lock
+                    global_semester_adj[semester]['LEC'][day].update(slot_indices)
                     scheduled = True
                     slot_time = TIME_SLOTS[slot_indices[0]][0].strftime('%H:%M')
                     print(f"    ✅ Lecture {session_num+1}/{lec_sessions}: {DAYS[day]} at {slot_time}")
@@ -634,8 +952,8 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                 day = random.randint(0, len(DAYS)-1)
                 start_idx = random.randint(0, max(0, len(TIME_SLOTS)-2))
                 
-                lec_on_day = any(d == day and ct == 'LEC' for d, _, ct in basket_schedule)
-                if lec_on_day:
+                lec_or_tut_on_day = any(d == day and ct in ['LEC', 'TUT'] for d, _, ct in basket_schedule)
+                if lec_or_tut_on_day:
                     continue
                 
                 conflict = False
@@ -659,12 +977,14 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                     
                     slot_indices.append(i)
                     accumulated += slot_minutes(TIME_SLOTS[i])
-                    
-                    if accumulated >= TUTORIAL_MIN:
+                    if accumulated == TUTORIAL_MIN:
+                        break
+                    if accumulated > TUTORIAL_MIN:
+                        valid = False
                         break
                 
                 # *** MODIFIED: Check only against the current basket type's global slots ***
-                if valid and accumulated >= TUTORIAL_MIN and len(slot_indices) > 0:
+                if valid and accumulated == TUTORIAL_MIN and len(slot_indices) > 0:
                     if any(s in current_basket_global_slots[day] for s in slot_indices):
                         continue # Slot already taken by another 'B1' course, try again
 
@@ -707,12 +1027,24 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                     
                     slot_indices.append(i)
                     accumulated += slot_minutes(TIME_SLOTS[i])
-                    
-                    if accumulated >= LAB_MIN:
+                    if accumulated == LAB_MIN:
+                        break
+                    if accumulated > LAB_MIN:
+                        valid = False
                         break
                 
+                # Prevent consecutive labs across baskets for the same semester
+                lab_slots = global_semester_adj[semester]['LAB'][day]
+                adj_conflict = False
+                for si in slot_indices:
+                    if si in lab_slots or (si - 1) in lab_slots or (si + 1) in lab_slots:
+                        adj_conflict = True
+                        break
+                if adj_conflict:
+                    continue
+
                 # *** MODIFIED: Check only against the current basket type's global slots ***
-                if valid and accumulated >= LAB_MIN and len(slot_indices) > 0:
+                if valid and accumulated == LAB_MIN and len(slot_indices) > 0:
                     # Prevent two LABs back-to-back for the same section/timetable
                     prev_idx = slot_indices[0] - 1
                     if prev_idx >= 0 and timetable[day][prev_idx]['type'] == 'LAB':
@@ -727,6 +1059,7 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                     # This slot is free. Book it.
                     basket_schedule.append((day, slot_indices, 'LAB'))
                     current_basket_global_slots[day].update(slot_indices) # Add to 'B1' lock
+                    global_semester_adj[semester]['LAB'][day].update(slot_indices)
                     scheduled = True
                     slot_time = TIME_SLOTS[slot_indices[0]][0].strftime('%H:%M')
                     print(f"    ✅ Lab {session_num+1}/{lab_sessions}: {DAYS[day]} at {slot_time}")
@@ -806,6 +1139,7 @@ def generate_all_timetables():
 
     seventh_sem_processed = False
     seventh_sem_course_data = []
+    crossdept_schedule = {}
 
     for department in df['Department'].unique():
         sems = sorted(df[df['Department'] == department]['Semester'].unique())
@@ -820,35 +1154,29 @@ def generate_all_timetables():
                 continue
 
             dept_upper = str(department).strip().upper()
-            num_sections = 2 if (dept_upper == "CSE" and int(semester) in [2, 4, 6]) else 1
+            num_sections = 2 if dept_upper == "CSE" else 1
 
             courses = df[(df['Department'] == department) & (df['Semester'] == semester)]
             if 'Schedule' in courses.columns:
                 courses = courses[(courses['Schedule'].fillna('Yes').str.upper() == 'YES') | (courses['Schedule'].isna())]
             if courses.empty:
                 continue
-
-            if 'P' in courses.columns:
-                lab_courses = courses[courses['P'] > 0].copy()
-                non_lab_courses = courses[courses['P'] == 0].copy()
-            else:
-                lab_courses = courses.head(0)
-                non_lab_courses = courses.copy()
-
-            if not lab_courses.empty:
-                lab_courses['priority'] = lab_courses.apply(get_course_priority, axis=1)
-                lab_courses = lab_courses.sort_values('priority', ascending=False)
-            non_lab_courses['priority'] = non_lab_courses.apply(get_course_priority, axis=1)
-            non_lab_courses = non_lab_courses.sort_values('priority', ascending=False)
-
-            combined = pd.concat([lab_courses, non_lab_courses])
-            combined['is_elective'] = combined.apply(is_elective, axis=1)
-            combined['elective_basket'] = combined['Course Code'].apply(extract_elective_basket)
-
-            courses_combined = combined.sort_values(
-                by=['is_elective', 'priority'], 
-                ascending=[False, False]
-            ).drop_duplicates()
+            courses = normalize_section_info(courses)
+            courses = normalize_crossdept_info(courses)
+            # Build cross-dept groups for this semester across all departments
+            semester_courses_all = df[df['Semester'] == semester]
+            if 'Schedule' in semester_courses_all.columns:
+                semester_courses_all = semester_courses_all[(semester_courses_all['Schedule'].fillna('Yes').str.upper() == 'YES') | (semester_courses_all['Schedule'].isna())]
+            semester_courses_all = normalize_crossdept_info(semester_courses_all)
+            crossdept_groups_all = get_crossdept_groups(semester_courses_all)
+            for g in list(crossdept_groups_all.keys()):
+                crossdept_groups_all[g] = crossdept_groups_all[g][crossdept_groups_all[g].apply(is_elective, axis=1) == False]
+                if crossdept_groups_all[g].empty:
+                    del crossdept_groups_all[g]
+            combined_courses_all = get_combined_courses_all_sections(courses)
+            if not combined_courses_all.empty:
+                combined_courses_all = combined_courses_all[combined_courses_all.apply(is_elective, axis=1) == False]
+            combined_schedule = None
 
             for section in range(num_sections):
                 section_title = f"{department}_{semester}" if num_sections == 1 else f"{department}_{semester}_{chr(65 + section)}"
@@ -859,15 +1187,59 @@ def generate_all_timetables():
                 overview.cell(row=row_index, column=3, value=section_title)
                 row_index += 1
 
-                timetable = {d: {s: {'type': None, 'code': '', 'name': '', 'faculty': '', 'classroom': ''} for s in range(len(TIME_SLOTS))} for d in range(len(DAYS))}
+                timetable = {d: {s: {'type': None, 'code': '', 'name': '', 'faculty': '', 'classroom': '', 'is_basket': False} for s in range(len(TIME_SLOTS))} for d in range(len(DAYS))}
                 course_day_components = {}
+
+                section_label = chr(65 + section) if num_sections > 1 else None
+                section_courses = courses
+                if dept_upper == "CSE" and section_label:
+                    section_courses = filter_courses_for_section(courses, section_label)
+                if dept_upper == "CSE" and combined_courses_all is not None and not combined_courses_all.empty:
+                    section_courses = section_courses[~section_courses.index.isin(combined_courses_all.index)]
+                dept_crossdept_groups = {}
+                if crossdept_groups_all:
+                    for gname, gdf in crossdept_groups_all.items():
+                        dept_rows = gdf[gdf['Department'] == department]
+                        if not dept_rows.empty:
+                            dept_crossdept_groups[gname] = dept_rows
+                    if dept_crossdept_groups:
+                        crossdept_idx = pd.concat(dept_crossdept_groups.values()).index
+                        section_courses = section_courses[~section_courses.index.isin(crossdept_idx)]
+
+                if 'P' in section_courses.columns:
+                    lab_courses = section_courses[section_courses['P'] > 0].copy()
+                    non_lab_courses = section_courses[section_courses['P'] == 0].copy()
+                else:
+                    lab_courses = section_courses.head(0)
+                    non_lab_courses = section_courses.copy()
+
+                if not lab_courses.empty:
+                    lab_courses['priority'] = lab_courses.apply(get_course_priority, axis=1)
+                    lab_courses = lab_courses.sort_values('priority', ascending=False)
+                non_lab_courses['priority'] = non_lab_courses.apply(get_course_priority, axis=1)
+                non_lab_courses = non_lab_courses.sort_values('priority', ascending=False)
+
+                combined = pd.concat([lab_courses, non_lab_courses])
+                combined['is_elective'] = combined.apply(is_elective, axis=1)
+                combined['elective_basket'] = combined['Course Code'].apply(extract_elective_basket)
+
+                courses_combined = combined.sort_values(
+                    by=['is_elective', 'priority'], 
+                    ascending=[False, False]
+                ).drop_duplicates()
+
+                legend_courses = courses_combined
+                if combined_courses_all is not None and not combined_courses_all.empty:
+                    legend_courses = pd.concat([courses_combined, combined_courses_all]).drop_duplicates()
+                if dept_crossdept_groups:
+                    legend_courses = pd.concat([legend_courses] + [g for g in dept_crossdept_groups.values()]).drop_duplicates()
 
                 section_subject_color = {}
                 color_iter = iter(SUBJECT_COLORS)
                 course_faculty_map = {}
                 basket_scheduled_courses = set()
 
-                for _, c in courses_combined.iterrows():
+                for _, c in legend_courses.iterrows():
                     code = str(c.get('Course Code', '')).strip()
                     if code and code not in section_subject_color:
                         try:
@@ -928,21 +1300,46 @@ def generate_all_timetables():
                             b1_schedule_list.append((code, candidate_room))
                         # *** END NEW ***
                         
+                        # Skip if this basket placement would overwrite a non-basket class
+                        conflict = False
+                        for si in slot_indices:
+                            if timetable[day][si]['type'] is not None and not timetable[day][si].get('is_basket', False):
+                                conflict = True
+                                break
+                        if conflict:
+                            continue
+
+                        # Prevent consecutive lectures or labs (adjacent slots)
+                        if comp_type == 'LEC':
+                            prev_idx = slot_indices[0] - 1
+                            if prev_idx >= 0 and timetable[day][prev_idx]['type'] == 'LEC':
+                                continue
+                            next_idx = slot_indices[-1] + 1
+                            if next_idx < len(TIME_SLOTS) and timetable[day][next_idx]['type'] == 'LEC':
+                                continue
+                        if comp_type == 'LAB':
+                            prev_idx = slot_indices[0] - 1
+                            if prev_idx >= 0 and timetable[day][prev_idx]['type'] == 'LAB':
+                                continue
+                            next_idx = slot_indices[-1] + 1
+                            if next_idx < len(TIME_SLOTS) and timetable[day][next_idx]['type'] == 'LAB':
+                                continue
+
+                        # Always reserve professor + room for each course in the basket
+                        for si in slot_indices:
+                            professor_schedule[faculty][day].add(si)
+                            if candidate_room not in room_schedule:
+                                room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
+                            room_schedule[candidate_room][day].add(si)
+
                         for si_idx, si in enumerate(slot_indices):
-                            # Only fill the timetable if the slot is empty
-                            if timetable[day][si]['type'] is None:
-                                timetable[day][si]['type'] = comp_type
-                                # Display the base code (e.g., MA161-C004)
-                                timetable[day][si]['code'] = f"{basket}\n{base_code}" if si_idx == 0 else ''
-                                timetable[day][si]['name'] = name if si_idx == 0 else ''
-                                timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
-                                timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
-                                
-                                # Also book the professor and room
-                                professor_schedule[faculty][day].add(si)
-                                if candidate_room not in room_schedule:
-                                    room_schedule[candidate_room] = {d: set() for d in range(len(DAYS))}
-                                room_schedule[candidate_room][day].add(si)
+                            timetable[day][si]['type'] = comp_type
+                            timetable[day][si]['is_basket'] = True
+                            # Display the base code (e.g., MA161-C004)
+                            timetable[day][si]['code'] = f"{basket}\n{base_code}" if si_idx == 0 else ''
+                            timetable[day][si]['name'] = name if si_idx == 0 else ''
+                            timetable[day][si]['faculty'] = faculty if si_idx == 0 else ''
+                            timetable[day][si]['classroom'] = candidate_room if si_idx == 0 else ''
                         
                         if day not in course_day_components[base_code]:
                             course_day_components[base_code][day] = []
@@ -950,6 +1347,36 @@ def generate_all_timetables():
                     
                     basket_scheduled_courses.add(code)
                     print(f"    ✅ Applied {basket} schedule to {code}")
+
+                # Schedule combined courses once (A), then apply same slots to B
+                if dept_upper == "CSE" and section_label in ["A", "B"] and combined_courses_all is not None and not combined_courses_all.empty:
+                    if section_label == "A":
+                        combined_schedule = schedule_combined_courses(
+                            timetable, combined_courses_all, semester, professor_schedule,
+                            room_schedule, course_room_mapping, course_day_components,
+                            unscheduled_components, department
+                        )
+                    elif section_label == "B" and combined_schedule is not None:
+                        apply_combined_schedule(
+                            timetable, combined_schedule, professor_schedule,
+                            room_schedule, course_day_components
+                        )
+
+                if section_label is None and dept_crossdept_groups:
+                    for group_name, group_courses in dept_crossdept_groups.items():
+                        key = (int(semester), group_name)
+                        if key not in crossdept_schedule:
+                            crossdept_schedule[key] = schedule_crossdept_group(
+                                timetable, group_courses, semester, professor_schedule,
+                                room_schedule, course_room_mapping, course_day_components,
+                                unscheduled_components, department
+                            )
+                        else:
+                            apply_crossdept_schedule(
+                                timetable, group_courses, crossdept_schedule[key],
+                                professor_schedule, room_schedule, course_room_mapping,
+                                course_day_components
+                            )
 
                 # Schedule non-elective courses
                 print(f"\n📖 Scheduling non-elective courses for {section_title}...")
@@ -1039,7 +1466,7 @@ def generate_all_timetables():
 
                 # Write timetable to sheet
                 write_timetable_to_sheet(ws, timetable, section_subject_color, course_faculty_map, 
-                                         courses_combined, course_room_mapping, semester)
+                                         legend_courses, course_room_mapping, semester)
 
     # *** NEW: Print B1 course list ***
     if b1_schedule_list:
@@ -1145,7 +1572,7 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
         ascending=[False, False]
     ).drop_duplicates()
     
-    timetable = {d: {s: {'type': None, 'code': '', 'name': '', 'faculty': '', 'classroom': ''} 
+    timetable = {d: {s: {'type': None, 'code': '', 'name': '', 'faculty': '', 'classroom': '', 'is_basket': False} 
                        for s in range(len(TIME_SLOTS))} for d in range(len(DAYS))}
     course_day_components = {}
     
@@ -1229,10 +1656,6 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
             if not ok:
                 add_unscheduled_course(unscheduled_components, "Common_7th", 7, code, name, faculty, 'LAB', 0, f"No computer lab available (Needs {student_strength} capacity)")
 
-    # Schedule non-elective courses normally
-    for _, course in non_electives.iterrows():
-        schedule_single_course(course)
-
     # Group electives by basket and schedule each basket as a unit
     if not electives.empty:
         baskets = {}
@@ -1289,9 +1712,19 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                                 break
                             slot_indices_local.append(i)
                             acc += slot_minutes(TIME_SLOTS[i])
+                            if acc > required_minutes:
+                                break
                             i += 1
-                        if acc < required_minutes:
+                        if acc != required_minutes:
                             continue
+                        # Prevent back-to-back lectures in 7th semester common timetable
+                        if comp_type == 'LEC':
+                            prev_idx = slot_indices_local[0] - 1
+                            if prev_idx >= 0 and timetable[day][prev_idx]['type'] == 'LEC':
+                                continue
+                            next_idx = slot_indices_local[-1] + 1
+                            if next_idx < len(TIME_SLOTS) and timetable[day][next_idx]['type'] == 'LEC':
+                                continue
                         # Prevent two LABs back-to-back when scheduling basket labs
                         if comp_type == 'LAB':
                             prev_idx = slot_indices_local[0] - 1
@@ -1341,6 +1774,7 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                         # All courses in basket can be placed in these slot_indices; commit assignments
                         for si_idx, si in enumerate(slot_indices_local):
                             timetable[day][si]['type'] = comp_type
+                            timetable[day][si]['is_basket'] = True
                             # Visible code shows basket label and a representative base (first course)
                             timetable[day][si]['code'] = f"{basket_label}\n{rep_base}" if si_idx == 0 else ''
                             timetable[day][si]['name'] = basket_label if si_idx == 0 else ''
@@ -1379,6 +1813,10 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                 ok = schedule_basket_component(LAB_MIN, 'LAB', total_strength, unique_facs)
                 if not ok:
                     add_unscheduled_course(unscheduled_components, "Common_7th", 7, basket_label, basket_label, agg_faculty, 'LAB', 0, f"Could not schedule basket {basket_label} labs (Needs {total_strength} capacity)")
+
+    # Schedule non-elective courses normally
+    for _, course in non_electives.iterrows():
+        schedule_single_course(course)
     
     write_timetable_to_sheet(ws, timetable, section_subject_color, course_faculty_map, 
                              courses_combined, course_room_mapping, 7)
@@ -1471,19 +1909,62 @@ def write_timetable_to_sheet(ws, timetable, section_subject_color, course_facult
                     # faculty and room info, but display only basket+type.
                     start_col = slot_idx + 2
                     end_col = slot_idx + 2 + len(span) - 1
-                    META_ENTRIES.append({
-                        'sheet': ws.title,
-                        'row': row_num,
-                        'start_col': start_col,
-                        'end_col': end_col,
-                        'faculty': fac,
-                        'classroom': cls,
-                        'typ': typ,
-                        'code': base_code or basket_label
-                    })
+                    # Prefer per-course faculty entries for the basket so
+                    # each faculty sees their own course in teacher timetable.
+                    basket_rows = courses_combined
+                    if 'elective_basket' in courses_combined.columns:
+                        basket_rows = courses_combined[courses_combined['elective_basket'] == basket_label]
+                    else:
+                        basket_rows = courses_combined[courses_combined['Course Code'].apply(extract_elective_basket) == basket_label]
+                    if basket_rows is not None and len(basket_rows) > 0:
+                        for _, brow in basket_rows.iterrows():
+                            full_code = str(brow.get('Course Code', '')).strip()
+                            if not full_code:
+                                continue
+                            base_c = get_base_course_code(full_code)
+                            fac_b = select_faculty(brow.get('Faculty', 'TBD'))
+                            room_b = course_room_mapping.get(f"{full_code}_{typ}") or \
+                                     course_room_mapping.get(f"{base_c}_{typ}") or cls
+                            META_ENTRIES.append({
+                                'sheet': ws.title,
+                                'row': row_num,
+                                'start_col': start_col,
+                                'end_col': end_col,
+                                'faculty': fac_b,
+                                'classroom': room_b,
+                                'typ': typ,
+                                'code': base_c or basket_label
+                            })
+                    else:
+                        META_ENTRIES.append({
+                            'sheet': ws.title,
+                            'row': row_num,
+                            'start_col': start_col,
+                            'end_col': end_col,
+                            'faculty': fac,
+                            'classroom': cls,
+                            'typ': typ,
+                            'code': base_code or basket_label
+                        })
                     display = f"{basket_label}\n{typ}"
                 else:
                     display = f"{code}\n{typ}\nRoom: {cls}\n{fac}"
+                    # Record metadata for merged ranges so teacher timetable
+                    # can fill every slot in the span (merged cells only keep
+                    # the value in the first column).
+                    if len(span) > 1:
+                        start_col = slot_idx + 2
+                        end_col = slot_idx + 2 + len(span) - 1
+                        META_ENTRIES.append({
+                            'sheet': ws.title,
+                            'row': row_num,
+                            'start_col': start_col,
+                            'end_col': end_col,
+                            'faculty': fac,
+                            'classroom': cls,
+                            'typ': typ,
+                            'code': code
+                        })
                 
                 # Use the full code (including B1/B2) for coloring
                 full_code = code.replace('\n', '-') if '\n' in code else code
@@ -1793,7 +2274,23 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
         return
     
     teacher_slots = {}
+    teacher_slot_types = {}
     slot_headers = []
+
+    # Build elective base-code set to simplify teacher display
+    elective_base_codes = set()
+    try:
+        for _, row in df.iterrows():
+            code = str(row.get('Course Code', '')).strip()
+            if extract_elective_basket(code):
+                elective_base_codes.add(get_base_course_code(code))
+    except Exception:
+        elective_base_codes = set()
+
+    def format_teacher_entry(code, typ, sheetname, room):
+        if code and code in elective_base_codes:
+            return f"{code}\nRoom: {room}"
+        return f"{code} {typ}\n({sheetname})\nRoom: {room}" if code else ''
 
     # Load meta information if present so teacher workbook can be built
     meta_map = {}
@@ -1812,12 +2309,13 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
                 if not m_sheet or not m_row or not m_start:
                     continue
                 for col in range(int(m_start), int(m_end) + 1):
-                    meta_map[(m_sheet, int(m_row), int(col))] = {
+                    key = (m_sheet, int(m_row), int(col))
+                    meta_map.setdefault(key, []).append({
                         'faculty': m_fac,
                         'room': m_room,
                         'typ': m_typ,
                         'code': m_code
-                    }
+                    })
         except Exception:
             meta_map = {}
     
@@ -1838,17 +2336,19 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
             for c in range(2, ws.max_column + 1):
                 # If there's meta info for this exact cell use it
                 if (sheetname, r, c) in meta_map:
-                    m = meta_map[(sheetname, r, c)]
-                    faculty = m.get('faculty')
-                    room = m.get('room')
-                    typ = m.get('typ')
-                    code = m.get('code')
-                    fac_list = split_faculty_names(faculty)
-                    for f in fac_list:
-                        if not f or str(f).strip().upper() in ["BREAK", "MINOR SLOT", "NAN", "NONE", "", "LUNCH BREAK"]:
-                            continue
-                        teacher_slots.setdefault(f, {d: {i: '' for i in range(len(slot_headers))} for d in range(len(DAYS))})
-                        teacher_slots[f][day_idx][c - 2] = f"{code} {typ}\n({sheetname})\nRoom: {room}" if code else ''
+                    for m in meta_map[(sheetname, r, c)]:
+                        faculty = m.get('faculty')
+                        room = m.get('room')
+                        typ = m.get('typ')
+                        code = m.get('code')
+                        fac_list = split_faculty_names(faculty)
+                        for f in fac_list:
+                            if not f or str(f).strip().upper() in ["BREAK", "MINOR SLOT", "NAN", "NONE", "", "LUNCH BREAK"]:
+                                continue
+                            teacher_slots.setdefault(f, {d: {i: '' for i in range(len(slot_headers))} for d in range(len(DAYS))})
+                            teacher_slot_types.setdefault(f, {d: {i: '' for i in range(len(slot_headers))} for d in range(len(DAYS))})
+                            teacher_slots[f][day_idx][c - 2] = format_teacher_entry(code, typ, sheetname, room)
+                            teacher_slot_types[f][day_idx][c - 2] = typ or ''
                     continue
 
                 code, typ, room, faculty = parse_cell_for_course(ws.cell(r, c).value)
@@ -1856,16 +2356,23 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
                     if not f or str(f).strip().upper() in ["BREAK", "MINOR SLOT", "NAN", "NONE", "", "LUNCH BREAK"]:
                         continue
                     teacher_slots.setdefault(f, {d: {i: '' for i in range(len(slot_headers))} for d in range(len(DAYS))})
-                    teacher_slots[f][day_idx][c - 2] = f"{code} {typ}\n({sheetname})\nRoom: {room}" if code else ''
+                    teacher_slot_types.setdefault(f, {d: {i: '' for i in range(len(slot_headers))} for d in range(len(DAYS))})
+                    teacher_slots[f][day_idx][c - 2] = format_teacher_entry(code, typ, sheetname, room)
+                    teacher_slot_types[f][day_idx][c - 2] = typ or ''
     
     # Create teacher workbook
     twb = Workbook()
     if "Sheet" in twb.sheetnames:
         twb.remove(twb["Sheet"])
     
-    # Softer header and alternate fills for teacher sheets
+    # Softer header and light component fills for teacher sheets
     header_fill = PatternFill(start_color="E3F2FD", end_color="E3F2FD", fill_type="solid")
     alt_fill = PatternFill(start_color="FBFCFD", end_color="FBFCFD", fill_type="solid")
+    lec_fill_default = PatternFill(start_color="FFDAB3", end_color="FFDAB3", fill_type="solid")
+    lab_fill_default = PatternFill(start_color="C8E6C9", end_color="C8E6C9", fill_type="solid")
+    tut_fill_default = PatternFill(start_color="BBDEFB", end_color="BBDEFB", fill_type="solid")
+    break_fill = PatternFill(start_color="E0E0E0", end_color="E0E0E0", fill_type="solid")
+    minor_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
     border = Border(left=Side(style="thin"), right=Side(style="thin"), top=Side(style="thin"), bottom=Side(style="thin"))
     header_font = Font(bold=True, size=12)
     title_font = Font(bold=True, size=14)
@@ -1891,10 +2398,30 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
             row = [day] + [teacher_slots[teacher][d][i] for i in range(len(slot_headers))]
             ws.append(row)
             row_idx = ws.max_row
-            if d % 2 == 0:
-                for cell in ws[row_idx]:
-                    cell.fill = alt_fill
-            for cell in ws[row_idx]:
+            for col_idx, cell in enumerate(ws[row_idx], start=1):
+                val = str(cell.value).upper() if cell.value is not None else ""
+                if col_idx == 1:
+                    # Day column zebra fill only
+                    if d % 2 == 0:
+                        cell.fill = alt_fill
+                else:
+                    slot_type = ''
+                    try:
+                        slot_type = teacher_slot_types.get(teacher, {}).get(d, {}).get(col_idx - 2, '')
+                    except Exception:
+                        slot_type = ''
+                    if "LUNCH BREAK" in val:
+                        cell.fill = break_fill
+                    elif "MINOR SLOT" in val:
+                        cell.fill = minor_fill
+                    elif slot_type == 'LAB' or " LAB" in val or "LAB" in val:
+                        cell.fill = lab_fill_default
+                    elif slot_type == 'TUT' or " TUT" in val or "TUT" in val:
+                        cell.fill = tut_fill_default
+                    elif slot_type == 'LEC' or " LEC" in val or "LEC" in val:
+                        cell.fill = lec_fill_default
+                    elif d % 2 == 0 and val == "":
+                        cell.fill = alt_fill
                 cell.alignment = cell_align
                 cell.border = border
             ws.row_dimensions[row_idx].height = 35
