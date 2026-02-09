@@ -82,8 +82,8 @@ DSAI,1,B1-NEW,Basics of design,3,1,0,0,2,Dr. Sandesh P,Yes,70
 DSAI,1,B1-HS156,Holistic Personality Development,3,0,0,0,2,Dr. Rajesh NS,Yes,70
 DSAI,1,B2-CS151,Introduction to CyberSecurity,3,1,0,0,2,Dr. Girish Revadigar,No,120
 DSAI,1,B1-NEW,Deep Speech Processing,3,1,0,0,4,Prof. SRM Prasanna,Yes,19
-DSAI,3,MA261,Multivariate Calculus,3,1,0,0,2,Dr. Somen B,Yes,170,,,CE_SHARED_4,COMBINED
-DSAI,3,MA262,Differential Equation,3,1,0,0,2,Dr. Anand B,No,170,,,CE_SHARED_5,COMBINED
+DSAI,3,MA262,Multivariate Calculus,3,1,0,0,2,Dr. Somen B,Yes,170,,,CE_SHARED_4,COMBINED
+DSAI,3,MA261,Differential Equation,3,1,0,0,2,Dr. Anand B,No,170,,,CE_SHARED_5,COMBINED
 DSAI,3,DA261,Statistical programing,1,0,2,0,2,Dr.Ramesh Athe,No,15
 DSAI,3,DA262,Data Handaling and Visualization,2,0,2,0,3,Dr. Siddharth,Yes,110
 DSAI,3,CS304,Artificial intelligence,3,1,0,0,4,Dr. Animesh Chaturvedi,Yes,80
@@ -143,14 +143,14 @@ ECE,1,B1-NEW,Leveraging IT for social good,3,1,0,0,2,Dr. Rajesh NS,Yes,80
 ECE,1,B1-NEW,Basics of design,3,1,0,0,2,Dr. Sandesh P,Yes,70
 ECE,1,B1-HS156,Holistic Personality Development,3,0,0,0,2,Dr. Rajesh NS,Yes,70
 ECE,1,B2-CS151,Introduction to CyberSecurity,3,1,0,0,2,Dr. Girish Revadigar,No,120
-ECE,3,MA261,Multivariable Calculus,3,1,0,0,2,Dr. Somen B,Yes,170,,,CE_SHARED_4,COMBINED
-ECE,3,MA262,Differential Equations,3,1,0,0,2,Dr. Anand B,No,170,,,CE_SHARED_5,COMBINED
+ECE,3,MA262,Multivariable Calculus,3,1,0,0,2,Dr. Somen B,Yes,170,,,CE_SHARED_4,COMBINED
+ECE,3,MA261,Differential Equations,3,1,0,0,2,Dr. Anand B,No,170,,,CE_SHARED_5,COMBINED
 ECE,3,MA263,Random Process,3,1,0,0,2,Dr. Chinmayananda,Yes,66
 ECE,3,CS307,Machine Learning,3,1,0,0,4,Dr. Deepak K.T,Yes,66
 ECE,3,EC261,Signal & Systems,2,1,0,0,3,Dr. Somen B,Yes,66
 ECE,3,EC262,Semiconductor Devices,3,0,2,0,2,Dr. Pankaj Kumar,Yes,66
 ECE,3,EC263,Analog Electronics Circuits,3,0,2,0,2,Dr. Rajesh Kumar,No,66
-ECE,3,NEW,HSS/IE ,3,0,0,0,3,TBD,Yes,66
+ECE,3,NEW,HSS/IE ,3,0,0,0,3,TBD,No,66
 ECE,3,B1-EC251,Electronics System Design-1,3,1,0,0,2,Dr. Pankaj Kumar,Yes,80
 ECE,3,B1-EC252,Introduction RFID Design,3,1,0,0,2,D. Rajesh Kumar,Yes,80
 ECE,3,B1-NEW,Electronics System Engineering,3,1,0,0,2,Dr. Mallikarjun ,Yes,80
