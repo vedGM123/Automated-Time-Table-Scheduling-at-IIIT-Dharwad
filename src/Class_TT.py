@@ -1,6 +1,6 @@
 import pandas as pd
 import random
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 from openpyxl.utils import get_column_letter
@@ -116,32 +116,29 @@ def generate_time_slots():
     - Lunch break: 13:15-14:00
     """
     slots = []
-    
-    slots = []
-    
-    slots.append((time(7, 30), time(9, 00)))    # 60 min
-    # slots.append((time(9, 30), time(9, 30)))    # 60 min
-    slots.append((time(9, 00), time(10, 00)))  # 60 min
-    slots.append((time(10, 00), time(10, 30))) # 60 min
-    slots.append((time(10, 30), time(10, 45))) # 60 min
-    slots.append((time(10, 45), time(11, 00)))    # 30 min
+
+    slots.append((time(7, 30), time(9, 0)))    # 90 min
+    slots.append((time(9, 0), time(10, 0)))    # 60 min
+    slots.append((time(10, 0), time(10, 30)))  # 30 min
+    slots.append((time(10, 30), time(10, 45))) # 15 min
+    slots.append((time(10, 45), time(11, 0)))  # 15 min
     slots.append((time(11, 00), time(11, 30)))
     slots.append((time(11, 30), time(12, 00)))
     slots.append((time(12, 00), time(12, 15)))
     slots.append((time(12, 15), time(12, 30)))
     slots.append((time(12, 30), time(13, 15)))
     # Lunch break: 13:15 - 14:00
-    slots.append((time(13, 15), time(14, 0)))    # BREAK
+    slots.append((time(13, 15), time(14, 0)))   # BREAK
     
     # Afternoon session: 14:00 - 18:30 (continuous)
-    slots.append((time(14, 0), time(14, 30)))    # 60 min
-    slots.append((time(14, 30), time(15, 30)))    # 60 min
-    slots.append((time(15, 30), time(15, 40)))    # 60 min
-    slots.append((time(15, 40), time(16, 00)))    # 60 min
-    slots.append((time(16, 00), time(16, 30)))  # 30 min
+    slots.append((time(14, 0), time(14, 30)))   # 30 min
+    slots.append((time(14, 30), time(15, 30)))  # 60 min
+    slots.append((time(15, 30), time(15, 40)))  # 10 min
+    slots.append((time(15, 40), time(16, 0)))   # 20 min
+    slots.append((time(16, 0), time(16, 30)))   # 30 min
     slots.append((time(16, 30), time(17, 10)))
     slots.append((time(17, 10), time(17, 30)))
-    slots.append((time(17, 30), time(18, 30)))  # 60/60 min
+    slots.append((time(17, 30), time(18, 30)))  # 60 min
     # Evening minor slot added: 18:30 - 20:00
     slots.append((time(18, 30), time(20, 0)))
 
@@ -226,6 +223,22 @@ def calculate_required_minutes(course_row):
     lab_count = p
     
     return (lec_count, tut_count, lab_count, 0)
+
+def get_lecture_session_plans(lec_count):
+    """
+    Return ordered lecture session plans (minutes per session).
+    If L=2 hours, prefer a single 120-min block, else fall back to two 60-min blocks.
+    For other L values, keep the existing LECTURE_MIN-based behavior.
+    """
+    if lec_count <= 0:
+        return [[]]
+
+    total_minutes = int(lec_count) * 60
+    if int(lec_count) == 2:
+        return [[120], [60, 60]]
+
+    sessions = int(total_minutes / LECTURE_MIN)
+    return [[LECTURE_MIN] * sessions]
 
 def get_required_room_type(component_type):
     if component_type == 'LAB':
@@ -640,7 +653,7 @@ def schedule_crossdept_group(timetable, group_courses, semester, professor_sched
         course_day_components[base_code] = {}
 
     lec_count, tut_count, lab_count, _ = calculate_required_minutes(rep_course)
-    lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+    lecture_plans = get_lecture_session_plans(lec_count)
     tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
     lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
 
@@ -691,9 +704,18 @@ def schedule_crossdept_group(timetable, group_courses, semester, professor_sched
                 return True
         return False
 
-    for _ in range(lec_sessions_needed):
-        if not schedule_component(LECTURE_MIN, 'LEC'):
-            add_unscheduled_course(unscheduled_components, department, semester, code, str(rep_course.get('Course Name', '')).strip(), faculty, 'LEC', 0, "Could not place cross-dept LEC")
+    lecture_scheduled = False
+    for plan in lecture_plans:
+        plan_ok = True
+        for minutes in plan:
+            if not schedule_component(minutes, 'LEC'):
+                plan_ok = False
+                break
+        if plan_ok:
+            lecture_scheduled = True
+            break
+    if not lecture_scheduled and lec_count > 0:
+        add_unscheduled_course(unscheduled_components, department, semester, code, str(rep_course.get('Course Name', '')).strip(), faculty, 'LEC', 0, "Could not place cross-dept LEC")
     for _ in range(tut_sessions_needed):
         if not schedule_component(TUTORIAL_MIN, 'TUT'):
             add_unscheduled_course(unscheduled_components, department, semester, code, str(rep_course.get('Course Name', '')).strip(), faculty, 'TUT', 0, "Could not place cross-dept TUT")
@@ -734,7 +756,7 @@ def schedule_combined_courses(timetable, combined_courses, semester, professor_s
             course_day_components[base_code] = {}
 
         lec_count, tut_count, lab_count, _ = calculate_required_minutes(course)
-        lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+        lecture_plans = get_lecture_session_plans(lec_count)
         tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
         lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
 
@@ -787,9 +809,18 @@ def schedule_combined_courses(timetable, combined_courses, semester, professor_s
                     return True
             return False
 
-        for _ in range(lec_sessions_needed):
-            if not schedule_component(LECTURE_MIN, 'LEC'):
-                add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'LEC', 0, "Could not place combined LEC")
+        lecture_scheduled = False
+        for plan in lecture_plans:
+            plan_ok = True
+            for minutes in plan:
+                if not schedule_component(minutes, 'LEC'):
+                    plan_ok = False
+                    break
+            if plan_ok:
+                lecture_scheduled = True
+                break
+        if not lecture_scheduled and lec_count > 0:
+            add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'LEC', 0, "Could not place combined LEC")
         for _ in range(tut_sessions_needed):
             if not schedule_component(TUTORIAL_MIN, 'TUT'):
                 add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'TUT', 0, "Could not place combined TUT")
@@ -902,7 +933,7 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
         
         print(f"    Structure: L={lec_count}h, T={tut_count}h, P={lab_count}h")
         
-        lec_sessions = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+        lecture_plans = get_lecture_session_plans(lec_count)
         tut_sessions = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
         lab_sessions = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
         
@@ -913,104 +944,112 @@ def schedule_global_elective_baskets(df_input, professor_schedule, room_schedule
                 'LAB': {d: set() for d in range(len(DAYS))}
             }
         
-        # Schedule lectures
-        for session_num in range(lec_sessions):
-            scheduled = False
-            for attempt in range(5000):
-                day = random.randint(0, len(DAYS)-1)
-                start_idx = random.randint(0, max(0, len(TIME_SLOTS)-3))
-                
-                conflict = False
-                for prev_day, prev_slots, prev_type in basket_schedule:
-                    if prev_day == day and prev_type in ['LEC', 'TUT']:
-                        # Do not allow multiple LEC/TUT on the same day for a basket
-                        conflict = True
-                        break
-                
-                if conflict:
-                    continue
-                
-                slot_indices = []
-                accumulated = 0
-                valid = True
-                
-                for i in range(start_idx, len(TIME_SLOTS)):
-                    if is_minor_slot(TIME_SLOTS[i]) or is_break_time_slot(TIME_SLOTS[i], semester):
-                        valid = False
-                        break
-                    
-                    slot_indices.append(i)
-                    accumulated += slot_minutes(TIME_SLOTS[i])
-                    if accumulated == LECTURE_MIN:
-                        break
-                    if accumulated > LECTURE_MIN:
-                        valid = False
-                        break
-                
-                # Prevent consecutive lectures across baskets for the same semester
-                lec_slots = global_semester_adj[semester]['LEC'][day]
-                adj_conflict = False
-                for si in slot_indices:
-                    if si in lec_slots or (si - 1) in lec_slots or (si + 1) in lec_slots:
-                        adj_conflict = True
-                        break
-                if adj_conflict:
-                    continue
-
-                # *** MODIFIED: Check only against the current basket type's global slots ***
-                if valid and accumulated == LECTURE_MIN and len(slot_indices) > 0:
-                    if any(s in current_basket_global_slots[day] for s in slot_indices):
-                        continue # Slot already taken by another 'B1' course, try again
-                    
-                    # This slot is free. Book it.
-                    basket_schedule.append((day, slot_indices, 'LEC'))
-                    current_basket_global_slots[day].update(slot_indices) # Add to 'B1' lock
-                    global_semester_adj[semester]['LEC'][day].update(slot_indices)
-                    scheduled = True
-                    slot_time = TIME_SLOTS[slot_indices[0]][0].strftime('%H:%M')
-                    print(f"    ✅ Lecture {session_num+1}/{lec_sessions}: {DAYS[day]} at {slot_time}")
-                    break
-            
-            if not scheduled:
-                # Fallback: relax adjacency constraint for this basket/session
+                # Schedule lectures
+        for plan in lecture_plans:
+            if not plan:
+                break
+            plan_ok = True
+            for session_num, required_minutes in enumerate(plan):
+                total_sessions = len(plan)
+                scheduled = False
                 for attempt in range(5000):
                     day = random.randint(0, len(DAYS)-1)
                     start_idx = random.randint(0, max(0, len(TIME_SLOTS)-3))
+            
                     conflict = False
-                    for prev_day, _, prev_type in basket_schedule:
+                    for prev_day, prev_slots, prev_type in basket_schedule:
                         if prev_day == day and prev_type in ['LEC', 'TUT']:
+                            # Do not allow multiple LEC/TUT on the same day for a basket
                             conflict = True
                             break
+            
                     if conflict:
                         continue
+            
                     slot_indices = []
                     accumulated = 0
                     valid = True
+            
                     for i in range(start_idx, len(TIME_SLOTS)):
                         if is_minor_slot(TIME_SLOTS[i]) or is_break_time_slot(TIME_SLOTS[i], semester):
                             valid = False
                             break
+                
                         slot_indices.append(i)
                         accumulated += slot_minutes(TIME_SLOTS[i])
-                        if accumulated == LECTURE_MIN:
+                        if accumulated == required_minutes:
                             break
-                        if accumulated > LECTURE_MIN:
+                        if accumulated > required_minutes:
                             valid = False
                             break
-                    if valid and accumulated == LECTURE_MIN and len(slot_indices) > 0:
+            
+                    # Prevent consecutive lectures across baskets for the same semester
+                    lec_slots = global_semester_adj[semester]['LEC'][day]
+                    adj_conflict = False
+                    for si in slot_indices:
+                        if si in lec_slots or (si - 1) in lec_slots or (si + 1) in lec_slots:
+                            adj_conflict = True
+                            break
+                    if adj_conflict:
+                        continue
+
+                    # *** MODIFIED: Check only against the current basket type's global slots ***
+                    if valid and accumulated == required_minutes and len(slot_indices) > 0:
                         if any(s in current_basket_global_slots[day] for s in slot_indices):
-                            continue
+                            continue # Slot already taken by another 'B1' course, try again
+                
+                        # This slot is free. Book it.
                         basket_schedule.append((day, slot_indices, 'LEC'))
-                        current_basket_global_slots[day].update(slot_indices)
-                        # do not update global_semester_adj in relaxed mode
+                        current_basket_global_slots[day].update(slot_indices) # Add to 'B1' lock
+                        global_semester_adj[semester]['LEC'][day].update(slot_indices)
                         scheduled = True
                         slot_time = TIME_SLOTS[slot_indices[0]][0].strftime('%H:%M')
-                        print(f"    ✅ Lecture {session_num+1}/{lec_sessions} (relaxed): {DAYS[day]} at {slot_time}")
+                        print(f"    ??? Lecture {session_num+1}/{total_sessions}: {DAYS[day]} at {slot_time}")
                         break
-                if not scheduled:
-                    print(f"    ⚠️ Could not schedule Lecture {session_num+1}/{lec_sessions}")
         
-        # Schedule tutorials
+                if not scheduled:
+                    # Fallback: relax adjacency constraint for this basket/session
+                    for attempt in range(5000):
+                        day = random.randint(0, len(DAYS)-1)
+                        start_idx = random.randint(0, max(0, len(TIME_SLOTS)-3))
+                        conflict = False
+                        for prev_day, _, prev_type in basket_schedule:
+                            if prev_day == day and prev_type in ['LEC', 'TUT']:
+                                conflict = True
+                                break
+                        if conflict:
+                            continue
+                        slot_indices = []
+                        accumulated = 0
+                        valid = True
+                        for i in range(start_idx, len(TIME_SLOTS)):
+                            if is_minor_slot(TIME_SLOTS[i]) or is_break_time_slot(TIME_SLOTS[i], semester):
+                                valid = False
+                                break
+                            slot_indices.append(i)
+                            accumulated += slot_minutes(TIME_SLOTS[i])
+                            if accumulated == required_minutes:
+                                break
+                            if accumulated > required_minutes:
+                                valid = False
+                                break
+                        if valid and accumulated == required_minutes and len(slot_indices) > 0:
+                            if any(s in current_basket_global_slots[day] for s in slot_indices):
+                                continue
+                            basket_schedule.append((day, slot_indices, 'LEC'))
+                            current_basket_global_slots[day].update(slot_indices)
+                            # do not update global_semester_adj in relaxed mode
+                            scheduled = True
+                            slot_time = TIME_SLOTS[slot_indices[0]][0].strftime('%H:%M')
+                            print(f"    ??? Lecture {session_num+1}/{total_sessions} (relaxed): {DAYS[day]} at {slot_time}")
+                            break
+                    if not scheduled:
+                        print(f"    ?????? Could not schedule Lecture {session_num+1}/{total_sessions}")
+                        plan_ok = False
+                        break
+            if plan_ok:
+                break
+# Schedule tutorials
         for session_num in range(tut_sessions):
             scheduled = False
             for attempt in range(5000):
@@ -1534,7 +1573,7 @@ def generate_all_timetables():
                         course_day_components[base_code] = {}
 
                     lec_count, tut_count, lab_count, ss_count = calculate_required_minutes(course)
-                    lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+                    lecture_plans = get_lecture_session_plans(lec_count)
                     tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
                     lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
 
@@ -1583,10 +1622,19 @@ def generate_all_timetables():
                         return False
 
                     # Schedule lectures
-                    for _ in range(lec_sessions_needed):
-                        ok = schedule_component(LECTURE_MIN, 'LEC', student_strength)
-                        if not ok:
-                            add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'LEC', section, f"Could not find suitable slot (Needs {student_strength} capacity)")
+                    lecture_scheduled = False
+                    for plan in lecture_plans:
+                        plan_ok = True
+                        for minutes in plan:
+                            ok = schedule_component(minutes, 'LEC', student_strength)
+                            if not ok:
+                                plan_ok = False
+                                break
+                        if plan_ok:
+                            lecture_scheduled = True
+                            break
+                    if not lecture_scheduled and lec_count > 0:
+                        add_unscheduled_course(unscheduled_components, department, semester, code, name, faculty, 'LEC', section, f"Could not find suitable slot (Needs {student_strength} capacity)")
 
                     # Schedule tutorials
                     for _ in range(tut_sessions_needed):
@@ -1761,7 +1809,7 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
             course_day_components[base_code] = {}
 
         lec_count, tut_count, lab_count, _ = calculate_required_minutes(course_row)
-        lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+        lecture_plans = get_lecture_session_plans(lec_count)
         tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
         lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
 
@@ -1797,10 +1845,19 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                     return True
             return False
 
-        for _ in range(lec_sessions_needed):
-            ok = schedule_component(LECTURE_MIN, 'LEC', student_strength, faculty, code, name)
-            if not ok:
-                add_unscheduled_course(unscheduled_components, "Common_7th", 7, code, name, faculty, 'LEC', 0, f"Could not find suitable slot (Needs {student_strength} capacity)")
+        lecture_scheduled = False
+        for plan in lecture_plans:
+            plan_ok = True
+            for minutes in plan:
+                ok = schedule_component(minutes, 'LEC', student_strength, faculty, code, name)
+                if not ok:
+                    plan_ok = False
+                    break
+            if plan_ok:
+                lecture_scheduled = True
+                break
+        if not lecture_scheduled and lec_count > 0:
+            add_unscheduled_course(unscheduled_components, "Common_7th", 7, code, name, faculty, 'LEC', 0, f"Could not find suitable slot (Needs {student_strength} capacity)")
         for _ in range(tut_sessions_needed):
             ok = schedule_component(TUTORIAL_MIN, 'TUT', student_strength, faculty, code, name)
             if not ok:
@@ -1823,7 +1880,7 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
             # Use first row as representative for LTPS structure
             first = rows[0]
             lec_count, tut_count, lab_count, _ = calculate_required_minutes(first)
-            lec_sessions_needed = int(lec_count * 60 / LECTURE_MIN) if lec_count > 0 else 0
+            lecture_plans = get_lecture_session_plans(lec_count)
             tut_sessions_needed = int(tut_count * 60 / TUTORIAL_MIN) if tut_count > 0 else 0
             lab_sessions_needed = int(lab_count * 60 / LAB_MIN) if lab_count > 0 else 0
 
@@ -1955,10 +2012,19 @@ def generate_7th_sem_common_timetable(wb, course_data_list, overview, row_index,
                         return True
                 return False
 
-            for _ in range(lec_sessions_needed):
-                ok = schedule_basket_component(LECTURE_MIN, 'LEC', total_strength, unique_facs)
-                if not ok:
-                    add_unscheduled_course(unscheduled_components, "Common_7th", 7, basket_label, basket_label, agg_faculty, 'LEC', 0, f"Could not schedule basket {basket_label} (Needs {total_strength} capacity)")
+            lecture_scheduled = False
+            for plan in lecture_plans:
+                plan_ok = True
+                for minutes in plan:
+                    ok = schedule_basket_component(minutes, 'LEC', total_strength, unique_facs)
+                    if not ok:
+                        plan_ok = False
+                        break
+                if plan_ok:
+                    lecture_scheduled = True
+                    break
+            if not lecture_scheduled and lec_count > 0:
+                add_unscheduled_course(unscheduled_components, "Common_7th", 7, basket_label, basket_label, agg_faculty, 'LEC', 0, f"Could not schedule basket {basket_label} (Needs {total_strength} capacity)")
             for _ in range(tut_sessions_needed):
                 ok = schedule_basket_component(TUTORIAL_MIN, 'TUT', total_strength, unique_facs)
                 if not ok:
@@ -2434,6 +2500,7 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
     teacher_slots = {}
     teacher_slot_types = {}
     slot_headers = []
+    scheduled_codes = set()
 
     # Build elective base-code set to simplify teacher display
     elective_base_codes = set()
@@ -2449,6 +2516,39 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
         if code and code in elective_base_codes:
             return f"{code}\nRoom: {room}"
         return f"{code} {typ}\n({sheetname})\nRoom: {room}" if code else ''
+
+    def record_scheduled_codes(cell_value):
+        """Capture course codes (including electives/baskets) seen in timetable cells."""
+        if cell_value is None:
+            return
+        text = str(cell_value).strip()
+        if text == '':
+            return
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if not lines:
+            return
+
+        import re
+        first = lines[0]
+        m = re.match(r'^(B\d+)', first, flags=re.IGNORECASE)
+        if m:
+            basket_label = m.group(1).upper()
+            scheduled_codes.add(basket_label)
+            if first == basket_label:
+                if len(lines) > 1:
+                    base_code = lines[1]
+                    if base_code:
+                        scheduled_codes.add(base_code)
+                        scheduled_codes.add(f"{basket_label}-{base_code}")
+            elif first.startswith(f"{basket_label}-"):
+                scheduled_codes.add(first)
+                base_code = first.split('-', 1)[1]
+                if base_code:
+                    scheduled_codes.add(base_code)
+                    scheduled_codes.add(f"{basket_label}-{base_code}")
+            return
+
+        scheduled_codes.add(first)
 
     # Load meta information if present so teacher workbook can be built
     meta_map = {}
@@ -2492,6 +2592,9 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
             day_idx = DAYS.index(day)
 
             for c in range(2, ws.max_column + 1):
+                # Track all scheduled codes to filter electives in unscheduled list
+                record_scheduled_codes(ws.cell(r, c).value)
+
                 # If there's meta info for this exact cell use it
                 if (sheetname, r, c) in meta_map:
                     for m in meta_map[(sheetname, r, c)]:
@@ -2607,7 +2710,24 @@ def create_teacher_and_unscheduled_from_combined(timetable_filename, unscheduled
     
     unscheduled_unique = {}
     
+    def elective_is_scheduled(code):
+        if not code:
+            return False
+        if code in scheduled_codes:
+            return True
+        base_code = get_base_course_code(code)
+        basket = extract_elective_basket(code)
+        if base_code and base_code in scheduled_codes:
+            return True
+        if basket and basket in scheduled_codes:
+            return True
+        if basket and base_code and f"{basket}-{base_code}" in scheduled_codes:
+            return True
+        return False
+
     for u in unscheduled_components:
+        if extract_elective_basket(u.code) and elective_is_scheduled(u.code):
+            continue
         if u.code not in unscheduled_unique:
             if hasattr(u, "reason") and u.reason and len(str(u.reason).strip()) > 0:
                 reason_text = str(u.reason).strip()

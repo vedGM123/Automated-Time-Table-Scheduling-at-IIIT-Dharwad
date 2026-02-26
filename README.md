@@ -1,52 +1,89 @@
 # Automated Time-Table Scheduling at IIIT Dharwad
 
-## 📌 Project Overview
-This project automates the generation of class and examination timetables at IIIT Dharwad.  
-It replaces the traditional manual scheduling process with an efficient, algorithm-driven system that considers constraints like faculty availability, classroom capacity, student enrollment, and course requirements.  
+Generate clash-free class timetables (lectures, tutorials, labs, and elective baskets) using course, room, and faculty data. The output is an Excel workbook for each section plus teacher schedules and a list of unscheduled courses.
 
-The goal is to generate **optimized, clash-free timetables** for lectures, labs, electives, and exams, saving time and minimizing errors.
+**What this tool does**
+- Schedules lectures, tutorials, and labs with faculty and room constraints
+- Supports elective baskets and shared cross-department courses
+- Enforces room capacity and lab/lecture room types
+- Produces color-coded Excel timetables, teacher timetables, and an unscheduled list
 
----
+## Quick Start
 
-## ⚙️ Features
+**Requirements**
+- Python 3.10+ (3.11+ recommended)
+- Windows/macOS/Linux
 
-- Automated lecture and lab scheduling and exam scheduling
-- Conflict-free allocation of classrooms and faculty  
-- Optimization of student workload and faculty teaching hours  
-- Dedicated self-study slots and post-lecture breaks  
-- Integration with Google Calendar for notifications  
-- Exam scheduling with seating arrangements and invigilator allocation  
-- Visual timetable with color-coded courses and exams  
+**Install**
+```bash
+git clone <your-repo-url>
+cd Automated-Time-Table-Scheduling-At-IIIT-Dharwad
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # macOS/Linux
+pip install -r requirements.txt
+```
 
----
+**Run**
+```bash
+python src/Class_TT.py
+```
 
-## 🛠️ Tech Stack
+Outputs are written to `output/`:
+- `timetable_all_departments.xlsx`
+- `teacher_timetables.xlsx`
+- `unscheduled_courses.xlsx`
 
-- **Programming Language:** Python  
-- **Algorithms:** Constraint Satisfaction Problem (CSP), Optimization algorithms  
-- **Data Management:** Local files / Databases (if any)  
-- **Other Tools:** Google Calendar API (for integration)  
+## Data Inputs
 
----
+All inputs live in `data/`:
+- `combined.csv`
+  Course list with L/T/P values, faculty, semester, and student counts.
+- `rooms.csv`
+  Room number, room type (e.g., `LECTURE_ROOM`, `COMPUTER_LAB`), and capacity.
+- `config.json`
+  Scheduling settings (days, slot durations, etc.).
 
-## 📂 Project Structure
+## Configuration
+
+Edit `data/config.json` to tune the scheduler. Example keys:
+- `days` (list of weekdays)
+- `LECTURE_MIN`, `TUTORIAL_MIN`, `LAB_MIN` (slot duration in minutes)
+- `SELF_STUDY_MIN` (if used)
+
+## Project Structure
+
+```
 Automated-Time-Table-Scheduling-At-IIIT-Dharwad/
-│── main.py # Main program
-│── README.md # Project description
-│── requirements.txt # Python dependencies (if any)
-│── .gitignore # Files/folders to ignore
-│── src/ # Source code modules
-│── data/ # Input files for courses, teachers, rooms
+|-- README.md
+|-- requirements.txt
+|-- src/
+|   |-- Class_TT.py
+|-- data/
+|   |-- combined.csv
+|   |-- rooms.csv
+|   |-- config.json
+|-- output/
+```
 
-## 👨‍💻 Team
-Ved Chandorikar – 24BCS161
-Sharanprakash R Kasbag – 24BCS136
-Rangineni Srihith – 24BCS116
-Shubham Ramesh Vaddar – 24BCS143
+## Troubleshooting
+
+- `combined.csv` not found: Ensure `data/combined.csv` exists.
+- Rooms not loading: Check `data/rooms.csv` headers and values.
+- Many unscheduled courses:
+  - Add more rooms or increase room capacities.
+  - Relax constraints in `data/config.json`.
+  - Extend the available time slots.
+
+## Team
+
+Ved Chandorikar ? 24BCS161  
+Sharanprakash R Kasbag ? 24BCS136  
+Rangineni Srihith ? 24BCS116  
+Shubham Ramesh Vaddar ? 24BCS143  
 Guide: Vivekraj V K, Assistant Professor, IIIT Dharwad
 
-## 📖 References
+## References
 
-1.Asli N Goktug et al., A timetable organizer for the planning and implementation of screenings in manual or semi-automation mode, Journal of biomolecular screening, 18:938–942, 2013.
-
-2.Vamsi Krishna Yepuri et al., Examination management automation system, Int. Res. J. Eng Technol, 5:2773–2779, 2018.
+1. Asli N Goktug et al., ?A timetable organizer for the planning and implementation of screenings in manual or semi-automation mode,? Journal of Biomolecular Screening, 18:938?942, 2013.
+2. Vamsi Krishna Yepuri et al., ?Examination management automation system,? Int. Res. J. Eng Technol, 5:2773?2779, 2018.
